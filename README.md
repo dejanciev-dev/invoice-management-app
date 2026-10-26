@@ -1,6 +1,6 @@
 # Invoice Manager
 
-[![CI](https://github.com/dejanciev-dev/managment-app/actions/workflows/ci.yml/badge.svg)](https://github.com/dejanciev-dev/managment-app/actions/workflows/ci.yml)
+[![CI](https://github.com/dejanciev-dev/invoice-management-app/actions/workflows/ci.yml/badge.svg)](https://github.com/dejanciev-dev/invoice-management-app/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
