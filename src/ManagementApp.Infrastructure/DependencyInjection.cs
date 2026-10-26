@@ -1,9 +1,8 @@
-﻿using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure.Files;
 using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Persistence;
 using ManagementApp.Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,24 +14,17 @@ namespace ManagementApp.Infrastructure
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(
-                    configuration.GetConnectionString("DefaultConnection"),
-                    b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddScoped<IApplicationDbContext>(provider => provider.GetService<ApplicationDbContext>());
+            services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+            services.AddScoped<ApplicationDbContextInitialiser>();
 
-            services.AddDefaultIdentity<ApplicationUser>()
+            services.AddIdentityApiEndpoints<ApplicationUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
-
-            services.AddIdentityServer()
-                .AddApiAuthorization<ApplicationUser, ApplicationDbContext>();
 
             services.AddTransient<IDateTime, DateTimeService>();
             services.AddTransient<IIdentityService, IdentityService>();
             services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
-
-            services.AddAuthentication()
-                .AddIdentityServerJwt();
 
             return services;
         }

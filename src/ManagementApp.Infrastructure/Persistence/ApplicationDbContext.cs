@@ -1,27 +1,22 @@
-﻿using IdentityServer4.EntityFramework.Options;
-using ManagementApp.Application.Common.Interfaces;
+﻿using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Infrastructure.Identity;
-using Microsoft.AspNetCore.ApiAuthorization.IdentityServer;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ManagementApp.Infrastructure.Persistence
 {
-    public class ApplicationDbContext : ApiAuthorizationDbContext<ApplicationUser>, IApplicationDbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
     {
         private readonly ICurrentUserService _currentUserService;
         private readonly IDateTime _dateTime;
 
         public ApplicationDbContext(
-            DbContextOptions options,
-            IOptions<OperationalStoreOptions> operationalStoreOptions,
+            DbContextOptions<ApplicationDbContext> options,
             ICurrentUserService currentUserService,
-            IDateTime dateTime) : base(options, operationalStoreOptions)
+            IDateTime dateTime) : base(options)
         {
             _currentUserService = currentUserService;
             _dateTime = dateTime;

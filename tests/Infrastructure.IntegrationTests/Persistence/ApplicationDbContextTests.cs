@@ -1,9 +1,7 @@
-﻿using IdentityServer4.EntityFramework.Options;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Moq;
 using Shouldly;
 using System;
@@ -35,14 +33,7 @@ namespace Infrastructure.IntegrationTests.Persistence
               .UseInMemoryDatabase(Guid.NewGuid().ToString())
               .Options;
 
-            var operationalStoreOptions = Options.Create(
-                new OperationalStoreOptions
-                {
-                    DeviceFlowCodes = new TableConfiguration("DeviceCodes"),
-                    PersistedGrants = new TableConfiguration("PersistedGrants")
-                });
-
-            _sut = new ApplicationDbContext(options, operationalStoreOptions, _currentUserServiceMock.Object, _dateTimeMock.Object);
+            _sut = new ApplicationDbContext(options, _currentUserServiceMock.Object, _dateTimeMock.Object);
 
             _sut.Invoices.Add(new Invoice
             {

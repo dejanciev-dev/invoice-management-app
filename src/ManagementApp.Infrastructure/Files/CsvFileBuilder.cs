@@ -2,8 +2,7 @@
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Infrastructure.Files.Maps;
-using System.Collections.Generic;
-using System.IO;
+using System.Globalization;
 
 namespace ManagementApp.Infrastructure.Files
 {
@@ -14,9 +13,9 @@ namespace ManagementApp.Infrastructure.Files
             using var memoryStream = new MemoryStream();
             using (var streamWriter = new StreamWriter(memoryStream))
             {
-                using var csvWriter = new CsvWriter(streamWriter);
+                using var csvWriter = new CsvWriter(streamWriter, CultureInfo.InvariantCulture);
 
-                csvWriter.Configuration.RegisterClassMap<InvoiceRecordMap>();
+                csvWriter.Context.RegisterClassMap<InvoiceRecordMap>();
                 csvWriter.WriteRecords(records);
             }
 
