@@ -6,6 +6,7 @@
     <Project Path="src/ManagementApp.Infrastructure/ManagementApp.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ManagementApp.Api.IntegrationTests/ManagementApp.Api.IntegrationTests.csproj" />
     <Project Path="tests/ManagementApp.Application.UnitTests/ManagementApp.Application.UnitTests.csproj" />
     <Project Path="tests/ManagementApp.Domain.UnitTests/ManagementApp.Domain.UnitTests.csproj" />
     <Project Path="tests/ManagementApp.Infrastructure.IntegrationTests/ManagementApp.Infrastructure.IntegrationTests.csproj" />
