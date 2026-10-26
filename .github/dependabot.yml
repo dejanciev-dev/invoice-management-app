@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+      test:
+        patterns: ["xunit*", "Shouldly", "Microsoft.Testing.*"]
+
+  - package-ecosystem: npm
+    directory: /src/ManagementApp.Web
+    schedule:
+      interval: weekly
+    groups:
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      tooling:
+        patterns: ["vite", "@vitejs/*", "vitest", "eslint", "@eslint/*", "typescript-eslint", "eslint-plugin-*", "typescript"]
+      testing-library:
+        patterns: ["@testing-library/*", "jsdom"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
