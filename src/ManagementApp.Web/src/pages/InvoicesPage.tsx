@@ -105,10 +105,12 @@ function Stats({ invoices }: { invoices: InvoiceSummary[] }) {
   const open = invoices.filter((i) => i.status !== 'Paid')
   const overdue = invoices.filter((i) => i.status === 'Overdue')
 
+  const count = (n: number) => `${n} ${n === 1 ? 'invoice' : 'invoices'}`
+
   const stats = [
     { label: 'Outstanding', value: formatTotalsByCurrency(open.map((i) => ({ amount: i.balanceDue, currency: i.currency }))), detail: `${open.length} open` },
-    { label: 'Overdue', value: formatTotalsByCurrency(overdue.map((i) => ({ amount: i.balanceDue, currency: i.currency }))), detail: `${overdue.length} invoices` },
-    { label: 'Total billed', value: formatTotalsByCurrency(invoices.map((i) => ({ amount: i.total, currency: i.currency }))), detail: `${invoices.length} invoices` },
+    { label: 'Overdue', value: formatTotalsByCurrency(overdue.map((i) => ({ amount: i.balanceDue, currency: i.currency }))), detail: count(overdue.length) },
+    { label: 'Total billed', value: formatTotalsByCurrency(invoices.map((i) => ({ amount: i.total, currency: i.currency }))), detail: count(invoices.length) },
   ]
 
   return (
@@ -133,7 +135,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceSummary[] }) {
         <thead className="bg-subtle/60 text-xs font-medium tracking-wide text-muted uppercase">
           <tr>
             <th scope="col" className="px-4 py-3">Invoice</th>
-            <th scope="col" className="px-4 py-3">Client</th>
+            <th scope="col" className="hidden px-4 py-3 sm:table-cell">Client</th>
             <th scope="col" className="hidden px-4 py-3 md:table-cell">Issued</th>
             <th scope="col" className="hidden px-4 py-3 md:table-cell">Due</th>
             <th scope="col" className="px-4 py-3 text-right">Total</th>
@@ -152,15 +154,17 @@ function InvoiceTable({ invoices }: { invoices: InvoiceSummary[] }) {
                 <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand">
                   {invoice.invoiceNumber}
                 </Link>
+                {/* On phones the client is shown under the number instead of in its own column. */}
+                <span className="block font-normal text-muted sm:hidden">{firstLine(invoice.to)}</span>
               </td>
-              <td className="px-4 py-3">{firstLine(invoice.to)}</td>
+              <td className="hidden px-4 py-3 sm:table-cell">{firstLine(invoice.to)}</td>
               <td className="hidden px-4 py-3 whitespace-nowrap text-muted md:table-cell">{formatDate(invoice.issueDate)}</td>
               <td className="hidden px-4 py-3 whitespace-nowrap text-muted md:table-cell">{formatDate(invoice.dueDate)}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">{formatMoney(invoice.total, invoice.currency)}</td>
               <td className="hidden px-4 py-3 text-right whitespace-nowrap tabular-nums sm:table-cell">
                 {formatMoney(invoice.balanceDue, invoice.currency)}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 <StatusBadge status={invoice.status} />
               </td>
             </tr>

@@ -175,9 +175,13 @@ function useServerErrors(error: unknown, setError: ReturnType<typeof useForm<Inv
   const fieldErrors = problem?.errors
 
   useEffect(() => {
-    for (const [path, messages] of Object.entries(fieldErrors ?? {})) {
-      setError(toFieldPath(path) as FieldPath<InvoiceFormValues>, { type: 'server', message: messages[0] })
-    }
+    Object.entries(fieldErrors ?? {}).forEach(([path, messages], index) => {
+      setError(
+        toFieldPath(path) as FieldPath<InvoiceFormValues>,
+        { type: 'server', message: messages[0] },
+        { shouldFocus: index === 0 }, // bring the first invalid field into view
+      )
+    })
   }, [fieldErrors, setError])
 
   if (!error) return []
@@ -204,7 +208,7 @@ function Summary({ control }: { control: Control<InvoiceFormValues> }) {
       <SummaryRow label="Discount" value={`−${money(totals.discountAmount)}`} />
       <SummaryRow label="Tax" value={money(totals.taxAmount)} />
       <SummaryRow label="Total" value={money(totals.total)} strong />
-      <SummaryRow label="Paid" value={`−${money(values.amountPaid || 0)}`} />
+      {(values.amountPaid ?? 0) > 0 && <SummaryRow label="Paid" value={`−${money(values.amountPaid ?? 0)}`} />}
       <SummaryRow label="Balance due" value={money(totals.balanceDue)} strong />
     </dl>
   )
