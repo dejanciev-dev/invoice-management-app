@@ -1,10 +1,8 @@
-﻿using ManagementApp.Domain.Entities;
-using System.Collections.Generic;
+﻿using ManagementApp.Application.Invoices;
 
-namespace ManagementApp.Application.Common.Interfaces
+namespace ManagementApp.Application.Common.Interfaces;
+
+public interface ICsvFileBuilder
 {
-    public interface ICsvFileBuilder
-    {
-        byte[] BuildInvoiceFile(IEnumerable<Invoice> records);
-    }
+    byte[] BuildInvoiceFile(IEnumerable<InvoiceRecord> records);
 }

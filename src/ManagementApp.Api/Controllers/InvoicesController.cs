@@ -1,38 +1,30 @@
-﻿using ManagementApp.Application.Common.Interfaces;
+﻿using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
-using ManagementApp.Application.Invoices.ViewModels;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace ManagementApp.Api.Controllers
+namespace ManagementApp.Api.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/[controller]")]
+public class InvoicesController : ControllerBase
 {
-    [Authorize]
-    public class InvoicesController : BaseController
+    [HttpPost]
+    public async Task<ActionResult<int>> Create(
+        CreateInvoiceCommand command,
+        [FromServices] CreateInvoiceHandler handler,
+        CancellationToken cancellationToken)
     {
-        private readonly ICurrentUserService _currentUserService;
+        return await handler.HandleAsync(command, cancellationToken);
+    }
 
-        public InvoicesController(ICurrentUserService currentUserService)
-        {
-            _currentUserService = currentUserService;
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<int>> Create(CreateInvoiceCommand command)
-        {
-            var vm = await Mediator.Send(command);
-            return Ok(vm);
-        }
-
-        [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IList<InvoiceVm>>> Get()
-        {
-            var vm = await Mediator.Send(new GetUserInvoicesQuery { User = _currentUserService.UserId });
-            return Ok(vm);
-        }
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<InvoiceDto>>> Get(
+        [FromServices] GetUserInvoicesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await handler.HandleAsync(cancellationToken));
     }
 }

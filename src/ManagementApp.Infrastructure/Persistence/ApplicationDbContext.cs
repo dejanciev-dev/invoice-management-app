@@ -11,15 +11,15 @@ namespace ManagementApp.Infrastructure.Persistence
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
     {
         private readonly ICurrentUserService _currentUserService;
-        private readonly IDateTime _dateTime;
+        private readonly TimeProvider _timeProvider;
 
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,
             ICurrentUserService currentUserService,
-            IDateTime dateTime) : base(options)
+            TimeProvider timeProvider) : base(options)
         {
             _currentUserService = currentUserService;
-            _dateTime = dateTime;
+            _timeProvider = timeProvider;
         }
 
         public DbSet<Invoice> Invoices { get; set; }
@@ -33,12 +33,12 @@ namespace ManagementApp.Infrastructure.Persistence
                 {
                     case EntityState.Added:
                         entry.Entity.CreatedBy = _currentUserService.UserId;
-                        entry.Entity.Created = _dateTime.Now;
+                        entry.Entity.Created = _timeProvider.GetUtcNow().UtcDateTime;
                         break;
 
                     case EntityState.Modified:
                         entry.Entity.LastModifiedBy = _currentUserService.UserId;
-                        entry.Entity.LastModified = _dateTime.Now;
+                        entry.Entity.LastModified = _timeProvider.GetUtcNow().UtcDateTime;
                         break;
                 }
             }

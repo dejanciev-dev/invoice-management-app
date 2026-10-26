@@ -1,22 +1,19 @@
-﻿using AutoMapper;
-using FluentValidation;
-using ManagementApp.Application.Common.Behaviors;
-using MediatR;
+﻿using FluentValidation;
+using ManagementApp.Application.Invoices.Commands;
+using ManagementApp.Application.Invoices.Queries;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
-namespace ManagementApp.Application
+namespace ManagementApp.Application;
+
+public static class DependencyInjection
 {
-    public static class DependecyInjection
+    public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
-        {
-            services.AddMediatR(Assembly.GetExecutingAssembly());
-            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(RequestValidationBehavior<,>));
-            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(RequestPerformanceBehaviour<,>));
-            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-            services.AddAutoMapper(Assembly.GetExecutingAssembly());
-            return services;
-        }
+        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        services.AddScoped<CreateInvoiceHandler>();
+        services.AddScoped<GetUserInvoicesHandler>();
+
+        return services;
     }
 }

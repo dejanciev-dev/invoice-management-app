@@ -2,6 +2,7 @@ using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Shouldly;
 using System;
@@ -14,16 +15,14 @@ namespace Infrastructure.IntegrationTests.Persistence
     {
         private readonly string _userId;
         private readonly DateTime _dateTime;
-        private readonly Mock<IDateTime> _dateTimeMock;
         private readonly Mock<ICurrentUserService> _currentUserServiceMock;
 
         private readonly ApplicationDbContext _sut;
 
         public ApplicationDbContextTests()
         {
-            _dateTime = new DateTime(2011, 2, 2);
-            _dateTimeMock = new Mock<IDateTime>();
-            _dateTimeMock.Setup(m => m.Now).Returns(_dateTime);
+            _dateTime = new DateTime(2011, 2, 2, 0, 0, 0, DateTimeKind.Utc);
+            var timeProvider = new FakeTimeProvider(new DateTimeOffset(_dateTime));
 
             _userId = "00000000-0000-0000-0000-000000000000";
             _currentUserServiceMock = new Mock<ICurrentUserService>();
@@ -33,7 +32,7 @@ namespace Infrastructure.IntegrationTests.Persistence
               .UseInMemoryDatabase(Guid.NewGuid().ToString())
               .Options;
 
-            _sut = new ApplicationDbContext(options, _currentUserServiceMock.Object, _dateTimeMock.Object);
+            _sut = new ApplicationDbContext(options, _currentUserServiceMock.Object, timeProvider);
 
             _sut.Invoices.Add(new Invoice
             {

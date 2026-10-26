@@ -2,7 +2,6 @@ using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure.Files;
 using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Persistence;
-using ManagementApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +21,7 @@ namespace ManagementApp.Infrastructure
             services.AddIdentityApiEndpoints<ApplicationUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
-            services.AddTransient<IDateTime, DateTimeService>();
-            services.AddTransient<IIdentityService, IdentityService>();
+            services.AddSingleton(TimeProvider.System);
             services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
 
             return services;

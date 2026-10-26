@@ -1,12 +1,13 @@
-﻿using CsvHelper.Configuration;
-using ManagementApp.Application.Invoices.ViewModels.Export;
+using CsvHelper.Configuration;
+using ManagementApp.Application.Invoices;
+using System.Globalization;
 
-namespace ManagementApp.Infrastructure.Files.Maps
+namespace ManagementApp.Infrastructure.Files.Maps;
+
+public sealed class InvoiceRecordMap : ClassMap<InvoiceRecord>
 {
-    public class InvoiceRecordMap : ClassMap<InvoiceRecord>
+    public InvoiceRecordMap()
     {
-        public InvoiceRecordMap()
-        {
-        }
+        AutoMap(CultureInfo.InvariantCulture);
     }
 }
