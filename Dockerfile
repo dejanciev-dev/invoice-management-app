@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # 1. Build the web app
-FROM node:24-alpine AS web
+FROM node:26-alpine AS web
 WORKDIR /web
 COPY src/ManagementApp.Web/package.json src/ManagementApp.Web/package-lock.json ./
 RUN npm ci
