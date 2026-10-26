@@ -21,6 +21,9 @@ public static class DependencyInjection
         services.AddIdentityApiEndpoints<ApplicationUser>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
+        services.AddHealthChecks()
+            .AddDbContextCheck<ApplicationDbContext>();
+
         services.AddSingleton(TimeProvider.System);
         services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
 
