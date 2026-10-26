@@ -487,3 +487,6 @@ dist/
 coverage/
 *.tsbuildinfo
 .env.local
+
+# Production web build copied into the API (see Dockerfile)
+src/ManagementApp.Api/wwwroot/

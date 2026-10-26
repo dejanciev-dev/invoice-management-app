@@ -186,6 +186,15 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         (await response.Content.ReadAsStringAsync(CancellationToken)).ShouldBe("Healthy");
     }
 
+    [Fact]
+    public async Task UnknownApiRoutes_ReturnNotFoundInsteadOfTheWebApp()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/does-not-exist", CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+    }
+
     private static SaveInvoiceCommand NewInvoice(string number) => new()
     {
         InvoiceNumber = number,
