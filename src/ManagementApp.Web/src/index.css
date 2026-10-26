@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-canvas: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-subtle: #f1f3f9;
+  --color-line: #e3e7ef;
+  --color-ink: #111827;
+  --color-muted: #5f6b7d;
+  --color-brand: #4f46e5;
+  --color-brand-strong: #4338ca;
+  --color-on-brand: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #0c1120;
+    --color-surface: #141b2d;
+    --color-subtle: #1b2338;
+    --color-line: #2a3450;
+    --color-ink: #e6e9f2;
+    --color-muted: #9aa6bd;
+    --color-brand: #818cf8;
+    --color-brand-strong: #a5b4fc;
+    --color-on-brand: #0c1120;
+  }
+}
+
+/* Invoices always print on white paper, whatever the screen theme. */
+@media print {
+  :root {
+    --color-canvas: #ffffff;
+    --color-surface: #ffffff;
+    --color-subtle: #f3f4f6;
+    --color-line: #d1d5db;
+    --color-ink: #111827;
+    --color-muted: #4b5563;
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+  }
+
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+}
