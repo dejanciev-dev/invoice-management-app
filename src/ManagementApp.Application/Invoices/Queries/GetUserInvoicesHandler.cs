@@ -3,16 +3,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices.Queries;
 
-public sealed class GetUserInvoicesHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+public sealed class GetUserInvoicesHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser,
+    TimeProvider timeProvider)
 {
     public async Task<IReadOnlyList<InvoiceDto>> HandleAsync(CancellationToken cancellationToken)
     {
+        var userId = currentUser.RequireUserId();
+
         var invoices = await context.Invoices
             .AsNoTracking()
-            .Include(i => i.InvoiceItems)
-            .Where(i => i.CreatedBy == currentUser.UserId)
+            .Where(i => i.OwnerId == userId)
             .ToListAsync(cancellationToken);
 
-        return invoices.Select(i => i.ToDto()).ToList();
+        var today = timeProvider.Today();
+        return invoices.Select(i => i.ToDto(today)).ToList();
     }
 }

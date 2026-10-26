@@ -6,50 +6,39 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
-namespace ManagementApp.Infrastructure.Persistence
+namespace ManagementApp.Infrastructure.Persistence;
+
+public class ApplicationDbContext(
+    DbContextOptions<ApplicationDbContext> options,
+    ICurrentUserService currentUserService,
+    TimeProvider timeProvider) : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        private readonly ICurrentUserService _currentUserService;
-        private readonly TimeProvider _timeProvider;
-
-        public ApplicationDbContext(
-            DbContextOptions<ApplicationDbContext> options,
-            ICurrentUserService currentUserService,
-            TimeProvider timeProvider) : base(options)
+        foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
         {
-            _currentUserService = currentUserService;
-            _timeProvider = timeProvider;
-        }
-
-        public DbSet<Invoice> Invoices { get; set; }
-        public DbSet<InvoiceItem> InvoiceItems { get; set; }
-
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
-        {
-            foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
+            switch (entry.State)
             {
-                switch (entry.State)
-                {
-                    case EntityState.Added:
-                        entry.Entity.CreatedBy = _currentUserService.UserId;
-                        entry.Entity.Created = _timeProvider.GetUtcNow().UtcDateTime;
-                        break;
+                case EntityState.Added:
+                    entry.Entity.CreatedBy = currentUserService.UserId;
+                    entry.Entity.Created = timeProvider.GetUtcNow();
+                    break;
 
-                    case EntityState.Modified:
-                        entry.Entity.LastModifiedBy = _currentUserService.UserId;
-                        entry.Entity.LastModified = _timeProvider.GetUtcNow().UtcDateTime;
-                        break;
-                }
+                case EntityState.Modified:
+                    entry.Entity.LastModifiedBy = currentUserService.UserId;
+                    entry.Entity.LastModified = timeProvider.GetUtcNow();
+                    break;
             }
-
-            return base.SaveChangesAsync(cancellationToken);
         }
 
-        protected override void OnModelCreating(ModelBuilder builder)
-        {
-            builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-            base.OnModelCreating(builder);
-        }
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+        builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

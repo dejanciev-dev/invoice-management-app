@@ -1,8 +1,7 @@
-﻿namespace ManagementApp.Domain.Enums
+namespace ManagementApp.Domain.Enums;
+
+public enum DiscountType
 {
-    public enum DiscountType
-    {
-        Flat,
-        Percentage
-    }
+    Flat,
+    Percentage
 }

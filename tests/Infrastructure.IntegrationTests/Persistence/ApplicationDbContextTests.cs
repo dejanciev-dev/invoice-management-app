@@ -3,101 +3,82 @@ using ManagementApp.Domain.Entities;
 using ManagementApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
-using Moq;
 using Shouldly;
-using System;
-using System.Threading.Tasks;
 using Xunit;
 
-namespace Infrastructure.IntegrationTests.Persistence
+namespace Infrastructure.IntegrationTests.Persistence;
+
+public sealed class ApplicationDbContextTests : IDisposable
 {
-    public class ApplicationDbContextTests : IDisposable
+    private const string UserId = "00000000-0000-0000-0000-000000000000";
+
+    private readonly DateTimeOffset _now = new(2026, 2, 2, 9, 30, 0, TimeSpan.Zero);
+    private readonly ApplicationDbContext _sut;
+
+    public ApplicationDbContextTests()
     {
-        private readonly string _userId;
-        private readonly DateTime _dateTime;
-        private readonly Mock<ICurrentUserService> _currentUserServiceMock;
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
 
-        private readonly ApplicationDbContext _sut;
+        _sut = new ApplicationDbContext(options, new FixedCurrentUser(UserId), new FakeTimeProvider(_now));
 
-        public ApplicationDbContextTests()
-        {
-            _dateTime = new DateTime(2011, 2, 2, 0, 0, 0, DateTimeKind.Utc);
-            var timeProvider = new FakeTimeProvider(new DateTimeOffset(_dateTime));
+        _sut.Invoices.Add(NewInvoice(1));
+        _sut.Invoices.Add(NewInvoice(3));
+        _sut.SaveChanges();
+    }
 
-            _userId = "00000000-0000-0000-0000-000000000000";
-            _currentUserServiceMock = new Mock<ICurrentUserService>();
-            _currentUserServiceMock.Setup(m => m.UserId).Returns(_userId);
+    [Fact]
+    public async Task SaveChangesAsync_GivenNewInvoice_ShouldSetCreatedProperties()
+    {
+        var invoice = NewInvoice(2);
 
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-              .UseInMemoryDatabase(Guid.NewGuid().ToString())
-              .Options;
+        _sut.Invoices.Add(invoice);
+        await _sut.SaveChangesAsync();
 
-            _sut = new ApplicationDbContext(options, _currentUserServiceMock.Object, timeProvider);
+        invoice.Created.ShouldBe(_now);
+        invoice.CreatedBy.ShouldBe(UserId);
+    }
 
-            _sut.Invoices.Add(new Invoice
-            {
-                Id = 1
-            });
-            _sut.Invoices.Add(new Invoice
-            {
-                Id = 3//delete invoice
-            });
+    [Fact]
+    public async Task SaveChangesAsync_GivenExistingInvoice_ShouldSetLastModifiedProperties()
+    {
+        var invoice = await _sut.Invoices.FindAsync(1);
+        invoice.ShouldNotBeNull();
 
-            _sut.SaveChanges();
-        }
+        invoice.AmountPaid = 10m;
+        await _sut.SaveChangesAsync();
 
-        [Fact]
-        public async Task SaveChangesAsync_GivenNewInvoice_ShouldSetCreatedProperties()
-        {
-            var invoice = new Invoice
-            {
-                Id = 2
-            };
+        invoice.LastModified.ShouldBe(_now);
+        invoice.LastModifiedBy.ShouldBe(UserId);
+    }
 
-            _sut.Invoices.Add(invoice);
+    [Fact]
+    public async Task SaveChangesAsync_GivenRemovedInvoice_ShouldDeleteIt()
+    {
+        var invoice = await _sut.Invoices.FindAsync(3);
+        invoice.ShouldNotBeNull();
 
-            await _sut.SaveChangesAsync();
+        _sut.Invoices.Remove(invoice);
+        await _sut.SaveChangesAsync();
 
-            invoice.Created.ShouldBe(_dateTime);
-            invoice.CreatedBy.ShouldBe(_userId);
-        }
+        (await _sut.Invoices.FindAsync(3)).ShouldBeNull();
+    }
 
-        [Fact]
-        public async Task SaveChangesAsync_GivenExistingInvoice_ShouldSetLastModifiedProperties()
-        {
-            int id = 1;
-            var invoice = await _sut.Invoices.FindAsync(id);
-            invoice.AmountPaid = 10.0;
-            await _sut.SaveChangesAsync();
+    public void Dispose() => _sut.Dispose();
 
-            invoice.ShouldNotBeNull();
-            invoice.LastModified.ShouldBe(_dateTime);
-            invoice.LastModifiedBy.ShouldBe(_userId);
-        }
+    private static Invoice NewInvoice(int id) => new()
+    {
+        Id = id,
+        OwnerId = UserId,
+        InvoiceNumber = $"INV-{id:000}",
+        From = "Acme Ltd",
+        To = "Globex Corporation",
+        IssueDate = new DateOnly(2026, 2, 1)
+    };
 
-        [Fact]
-        public async Task SaveChangesAsync_GivenExistingInvoice_ShouldDeleteGivenInvoice()
-        {
-            int id = 3;
-            var invoice = await _sut.Invoices.FindAsync(id);
-            _sut.Invoices.Remove(invoice);
-
-            await _sut.SaveChangesAsync();
-
-            invoice = await _sut.Invoices.FindAsync(id);
-
-            invoice.ShouldBeNull();
-        }
-
-        [Fact]
-        public void Database_DeleteDatabase()
-        {
-            Assert.True(_sut.Database.EnsureDeleted());
-        }
-
-        public void Dispose()
-        {
-            _sut?.Dispose();
-        }
+    private sealed class FixedCurrentUser(string userId) : ICurrentUserService
+    {
+        public string? UserId { get; } = userId;
     }
 }

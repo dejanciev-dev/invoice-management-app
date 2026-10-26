@@ -4,37 +4,46 @@ namespace ManagementApp.Application.Invoices;
 
 public static class InvoiceMappings
 {
-    public static InvoiceDto ToDto(this Invoice invoice) => new(
+    public static InvoiceDto ToDto(this Invoice invoice, DateOnly today) => new(
         invoice.Id,
         invoice.InvoiceNumber,
-        invoice.Logo,
         invoice.From,
         invoice.To,
-        invoice.Date,
-        invoice.PaymentTerms,
+        invoice.IssueDate,
         invoice.DueDate,
+        invoice.PaymentTerms,
+        invoice.Notes,
+        invoice.Currency,
         invoice.Discount,
         invoice.DiscountType,
         invoice.Tax,
         invoice.TaxType,
         invoice.AmountPaid,
-        invoice.InvoiceItems.Select(ToDto).ToList());
+        invoice.Items.Select(ToDto).ToList(),
+        invoice.Subtotal,
+        invoice.DiscountAmount,
+        invoice.TaxAmount,
+        invoice.Total,
+        invoice.BalanceDue,
+        invoice.GetStatus(today));
 
     public static InvoiceItemDto ToDto(this InvoiceItem item) =>
-        new(item.Id, item.Item, item.Quantity, item.Rate, item.Quantity * item.Rate);
+        new(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount);
 
-    public static InvoiceRecord ToRecord(this Invoice invoice) => new()
-    {
-        Id = invoice.Id,
-        InvoiceNumber = invoice.InvoiceNumber,
-        Logo = invoice.Logo,
-        From = invoice.From,
-        To = invoice.To,
-        Date = invoice.Date,
-        PaymentTerms = invoice.PaymentTerms,
-        DueDate = invoice.DueDate,
-        Discount = invoice.Discount,
-        Tax = invoice.Tax,
-        AmountPaid = invoice.AmountPaid
-    };
+    public static InvoiceRecord ToRecord(this Invoice invoice, DateOnly today) => new(
+        invoice.InvoiceNumber,
+        invoice.To,
+        invoice.IssueDate,
+        invoice.DueDate,
+        invoice.Currency,
+        invoice.Subtotal,
+        invoice.DiscountAmount,
+        invoice.TaxAmount,
+        invoice.Total,
+        invoice.AmountPaid,
+        invoice.BalanceDue,
+        invoice.GetStatus(today));
+
+    public static DateOnly Today(this TimeProvider timeProvider) =>
+        DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 }

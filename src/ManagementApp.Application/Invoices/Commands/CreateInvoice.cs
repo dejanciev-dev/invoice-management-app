@@ -7,24 +7,28 @@ namespace ManagementApp.Application.Invoices.Commands;
 
 public sealed record CreateInvoiceCommand
 {
-    public string InvoiceNumber { get; init; }
-    public string Logo { get; init; }
-    public string From { get; init; }
-    public string To { get; init; }
-    public DateTime Date { get; init; }
-    public string PaymentTerms { get; init; }
-    public DateTime? DueDate { get; init; }
-    public double Discount { get; init; }
+    public string InvoiceNumber { get; init; } = string.Empty;
+    public string From { get; init; } = string.Empty;
+    public string To { get; init; } = string.Empty;
+    public DateOnly IssueDate { get; init; }
+    public DateOnly? DueDate { get; init; }
+    public string? PaymentTerms { get; init; }
+    public string? Notes { get; init; }
+    public string Currency { get; init; } = "USD";
+    public decimal Discount { get; init; }
     public DiscountType DiscountType { get; init; }
-    public double Tax { get; init; }
+    public decimal Tax { get; init; }
     public TaxType TaxType { get; init; }
-    public double AmountPaid { get; init; }
+    public decimal AmountPaid { get; init; }
     public IReadOnlyList<InvoiceItemInput> Items { get; init; } = [];
 }
 
-public sealed record InvoiceItemInput(string Item, double Quantity, double Rate);
+public sealed record InvoiceItemInput(string Description, decimal Quantity, decimal UnitPrice);
 
-public sealed class CreateInvoiceHandler(IApplicationDbContext context, IValidator<CreateInvoiceCommand> validator)
+public sealed class CreateInvoiceHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser,
+    IValidator<CreateInvoiceCommand> validator)
 {
     public async Task<int> HandleAsync(CreateInvoiceCommand command, CancellationToken cancellationToken)
     {
@@ -32,22 +36,27 @@ public sealed class CreateInvoiceHandler(IApplicationDbContext context, IValidat
 
         var invoice = new Invoice
         {
+            OwnerId = currentUser.RequireUserId(),
             InvoiceNumber = command.InvoiceNumber,
-            Logo = command.Logo,
             From = command.From,
             To = command.To,
-            Date = command.Date,
-            PaymentTerms = command.PaymentTerms,
+            IssueDate = command.IssueDate,
             DueDate = command.DueDate,
+            PaymentTerms = command.PaymentTerms,
+            Notes = command.Notes,
+            Currency = command.Currency,
             Discount = command.Discount,
             DiscountType = command.DiscountType,
             Tax = command.Tax,
             TaxType = command.TaxType,
-            AmountPaid = command.AmountPaid,
-            InvoiceItems = command.Items
-                .Select(i => new InvoiceItem { Item = i.Item, Quantity = i.Quantity, Rate = i.Rate })
-                .ToList()
+            AmountPaid = command.AmountPaid
         };
+        invoice.ReplaceItems(command.Items.Select(i => new InvoiceItem
+        {
+            Description = i.Description,
+            Quantity = i.Quantity,
+            UnitPrice = i.UnitPrice
+        }));
 
         context.Invoices.Add(invoice);
         await context.SaveChangesAsync(cancellationToken);

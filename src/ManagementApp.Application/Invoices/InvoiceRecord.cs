@@ -1,16 +1,18 @@
-﻿namespace ManagementApp.Application.Invoices;
+﻿using ManagementApp.Domain.Enums;
 
-public class InvoiceRecord
-{
-    public int Id { get; set; }
-    public string InvoiceNumber { get; set; }
-    public string Logo { get; set; }
-    public string From { get; set; }
-    public string To { get; set; }
-    public DateTime Date { get; set; }
-    public string PaymentTerms { get; set; }
-    public DateTime? DueDate { get; set; }
-    public double Discount { get; set; }
-    public double Tax { get; set; }
-    public double AmountPaid { get; set; }
-}
+namespace ManagementApp.Application.Invoices;
+
+/// <summary>A flattened invoice row used for CSV export.</summary>
+public sealed record InvoiceRecord(
+    string InvoiceNumber,
+    string To,
+    DateOnly IssueDate,
+    DateOnly? DueDate,
+    string Currency,
+    decimal Subtotal,
+    decimal Discount,
+    decimal Tax,
+    decimal Total,
+    decimal AmountPaid,
+    decimal BalanceDue,
+    InvoiceStatus Status);

@@ -5,17 +5,24 @@ namespace ManagementApp.Application.Invoices;
 public sealed record InvoiceDto(
     int Id,
     string InvoiceNumber,
-    string Logo,
     string From,
     string To,
-    DateTime Date,
-    string PaymentTerms,
-    DateTime? DueDate,
-    double Discount,
+    DateOnly IssueDate,
+    DateOnly? DueDate,
+    string? PaymentTerms,
+    string? Notes,
+    string Currency,
+    decimal Discount,
     DiscountType DiscountType,
-    double Tax,
+    decimal Tax,
     TaxType TaxType,
-    double AmountPaid,
-    IReadOnlyList<InvoiceItemDto> Items);
+    decimal AmountPaid,
+    IReadOnlyList<InvoiceItemDto> Items,
+    decimal Subtotal,
+    decimal DiscountAmount,
+    decimal TaxAmount,
+    decimal Total,
+    decimal BalanceDue,
+    InvoiceStatus Status);
 
-public sealed record InvoiceItemDto(int Id, string Item, double Quantity, double Rate, double Amount);
+public sealed record InvoiceItemDto(int Id, string Description, decimal Quantity, decimal UnitPrice, decimal Amount);
