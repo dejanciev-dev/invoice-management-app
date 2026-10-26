@@ -11,8 +11,12 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
+        services.AddScoped<GetInvoicesHandler>();
+        services.AddScoped<GetInvoiceHandler>();
+        services.AddScoped<ExportInvoicesHandler>();
         services.AddScoped<CreateInvoiceHandler>();
-        services.AddScoped<GetUserInvoicesHandler>();
+        services.AddScoped<UpdateInvoiceHandler>();
+        services.AddScoped<DeleteInvoiceHandler>();
 
         return services;
     }

@@ -13,6 +13,10 @@ public class CsvFileBuilder : ICsvFileBuilder
         using (var streamWriter = new StreamWriter(memoryStream))
         using (var csvWriter = new CsvWriter(streamWriter, CultureInfo.InvariantCulture))
         {
+            string[] isoDate = ["yyyy-MM-dd"];
+            csvWriter.Context.TypeConverterOptionsCache.GetOptions<DateOnly>().Formats = isoDate;
+            csvWriter.Context.TypeConverterOptionsCache.GetOptions<DateOnly?>().Formats = isoDate;
+
             csvWriter.WriteRecords(records);
         }
 

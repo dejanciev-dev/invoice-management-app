@@ -1,9 +1,10 @@
+using ManagementApp.Api.Endpoints;
 using ManagementApp.Api.Services;
 using ManagementApp.Application;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure;
-using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Persistence;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +14,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-builder.Services.AddControllers();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -30,8 +32,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+app.MapAuthEndpoints();
+app.MapInvoiceEndpoints();
 
 app.Run();
 

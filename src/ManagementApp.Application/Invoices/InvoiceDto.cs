@@ -25,4 +25,15 @@ public sealed record InvoiceDto(
     decimal BalanceDue,
     InvoiceStatus Status);
 
+public sealed record InvoiceSummaryDto(
+    int Id,
+    string InvoiceNumber,
+    string To,
+    DateOnly IssueDate,
+    DateOnly? DueDate,
+    string Currency,
+    decimal Total,
+    decimal BalanceDue,
+    InvoiceStatus Status);
+
 public sealed record InvoiceItemDto(int Id, string Description, decimal Quantity, decimal UnitPrice, decimal Amount);

@@ -27,6 +27,17 @@ public static class InvoiceMappings
         invoice.BalanceDue,
         invoice.GetStatus(today));
 
+    public static InvoiceSummaryDto ToSummaryDto(this Invoice invoice, DateOnly today) => new(
+        invoice.Id,
+        invoice.InvoiceNumber,
+        invoice.To,
+        invoice.IssueDate,
+        invoice.DueDate,
+        invoice.Currency,
+        invoice.Total,
+        invoice.BalanceDue,
+        invoice.GetStatus(today));
+
     public static InvoiceItemDto ToDto(this InvoiceItem item) =>
         new(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount);
 

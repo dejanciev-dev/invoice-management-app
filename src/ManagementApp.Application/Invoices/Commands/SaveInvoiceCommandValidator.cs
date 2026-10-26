@@ -3,9 +3,9 @@ using ManagementApp.Domain.Enums;
 
 namespace ManagementApp.Application.Invoices.Commands;
 
-public sealed class CreateInvoiceCommandValidator : AbstractValidator<CreateInvoiceCommand>
+public sealed class SaveInvoiceCommandValidator : AbstractValidator<SaveInvoiceCommand>
 {
-    public CreateInvoiceCommandValidator()
+    public SaveInvoiceCommandValidator()
     {
         RuleFor(v => v.InvoiceNumber).NotEmpty().MaximumLength(50);
         RuleFor(v => v.From).NotEmpty().MaximumLength(1000);
