@@ -182,6 +182,16 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<decimal>("StoredBalanceDue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("BalanceDue");
+
+                    b.Property<decimal>("StoredTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("Total");
+
                     b.Property<decimal>("Tax")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -202,6 +212,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("TenantId", "DueDate");
 
                     b.HasIndex("TenantId", "InvoiceNumber")
                         .IsUnique();
