@@ -51,22 +51,33 @@ export type InvoiceFormValues = z.infer<typeof invoiceFormSchema>
 
 export const emptyItem = { description: '', quantity: 1, unitPrice: 0 }
 
-export function newInvoiceValues(today = toIsoDate(new Date())): InvoiceFormValues {
+/** The company's defaults for new invoices (see the tenant settings). */
+export interface InvoiceDefaults {
+  invoiceNumber: string
+  currency: string
+  paymentTermsDays: number
+  taxRate: number
+  from: string
+  notes: string | null
+}
+
+export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: InvoiceDefaults): InvoiceFormValues {
+  const termsDays = defaults?.paymentTermsDays ?? 30
   return {
-    invoiceNumber: '',
-    currency: 'USD',
+    invoiceNumber: defaults?.invoiceNumber ?? '',
+    currency: defaults?.currency ?? 'USD',
     issueDate: today,
-    dueDate: addDays(today, 30),
-    paymentTerms: 'Net 30',
-    from: '',
+    dueDate: addDays(today, termsDays),
+    paymentTerms: termsDays === 0 ? 'Due on receipt' : `Net ${termsDays}`,
+    from: defaults?.from ?? '',
     to: '',
     items: [emptyItem],
     discount: 0,
     discountType: 'Percentage',
-    tax: 0,
+    tax: defaults?.taxRate ?? 0,
     taxType: 'Percentage',
     amountPaid: 0,
-    notes: '',
+    notes: defaults?.notes ?? '',
   }
 }
 

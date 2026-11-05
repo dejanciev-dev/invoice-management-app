@@ -8,6 +8,28 @@ describe('newInvoiceValues', () => {
     expect(values.dueDate).toBe('2026-02-14')
     expect(values.items).toHaveLength(1)
   })
+
+  it("starts from the company's defaults", () => {
+    const values = newInvoiceValues('2026-01-15', {
+      invoiceNumber: 'INV-0042',
+      currency: 'GBP',
+      paymentTermsDays: 14,
+      taxRate: 20,
+      from: 'Northwind Studio\nLondon',
+      notes: 'Thanks!',
+    })
+
+    expect(values).toMatchObject({
+      invoiceNumber: 'INV-0042',
+      currency: 'GBP',
+      dueDate: '2026-01-29',
+      paymentTerms: 'Net 14',
+      tax: 20,
+      taxType: 'Percentage',
+      from: 'Northwind Studio\nLondon',
+      notes: 'Thanks!',
+    })
+  })
 })
 
 describe('invoiceFormSchema', () => {

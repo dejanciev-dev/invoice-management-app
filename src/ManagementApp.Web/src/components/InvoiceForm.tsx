@@ -51,7 +51,7 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
             </Field>
             <Field label="Currency" htmlFor="currency" error={errors.currency?.message}>
               <select id="currency" {...register('currency')} className={inputClass}>
-                {currencies.map((code) => (
+                {(currencies.some((c) => c === defaultValues.currency) ? [...currencies] : [defaultValues.currency, ...currencies]).map((code) => (
                   <option key={code}>{code}</option>
                 ))}
               </select>

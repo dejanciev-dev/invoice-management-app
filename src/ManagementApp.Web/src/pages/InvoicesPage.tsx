@@ -1,7 +1,8 @@
 import { Download, FileText, Plus, Search } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { INVOICE_EXPORT_URL, useInvoices } from '../api/invoices'
+import { useCan } from '../api/auth'
+import { invoiceExportUrl, useInvoices } from '../api/invoices'
 import type { InvoiceStatus, InvoiceSummary } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { buttonClass, inputClass } from '../components/styles'
@@ -19,6 +20,8 @@ export function InvoicesPage() {
 
   const filtered = useInvoices({ search: deferredSearch || undefined, status })
   const all = useInvoices()
+  const canCreate = useCan('InvoicesCreate')
+  const canExport = useCan('InvoicesExport')
 
   const updateParam = (key: string, value: string | undefined) =>
     setSearchParams(
@@ -37,14 +40,18 @@ export function InvoicesPage() {
         description="Track what you've billed, what's been paid and what's overdue."
         actions={
           <>
-            <a href={INVOICE_EXPORT_URL} download className={buttonClass('secondary')}>
-              <Download className="size-4" aria-hidden />
-              Export CSV
-            </a>
-            <ButtonLink to="/invoices/new">
-              <Plus className="size-4" aria-hidden />
-              New invoice
-            </ButtonLink>
+            {canExport && (
+              <a href={invoiceExportUrl()} download className={buttonClass('secondary')}>
+                <Download className="size-4" aria-hidden />
+                Export CSV
+              </a>
+            )}
+            {canCreate && (
+              <ButtonLink to="/invoices/new">
+                <Plus className="size-4" aria-hidden />
+                New invoice
+              </ButtonLink>
+            )}
           </>
         }
       />
@@ -176,6 +183,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceSummary[] }) {
 }
 
 function EmptyState({ filtered }: { filtered: boolean }) {
+  const canCreate = useCan('InvoicesCreate')
   return (
     <div className="px-4 py-16 text-center">
       <FileText className="mx-auto size-10 text-muted/60" aria-hidden />
@@ -183,7 +191,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
       <p className="mt-1 text-sm text-muted">
         {filtered ? 'Try a different search or status.' : 'Create your first invoice to get started.'}
       </p>
-      {!filtered && (
+      {!filtered && canCreate && (
         <ButtonLink to="/invoices/new" className="mt-5">
           <Plus className="size-4" aria-hidden />
           New invoice

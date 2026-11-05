@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { useInvoice, useSaveInvoice } from '../api/invoices'
+import { useCurrentTenant } from '../api/tenant'
 import { InvoiceForm } from '../components/InvoiceForm'
 import { Alert, PageHeader, Spinner } from '../components/ui'
 import { invoiceToValues, newInvoiceValues, valuesToRequest, type InvoiceFormValues } from '../lib/invoiceForm'
@@ -8,11 +9,30 @@ import { NotFoundPage } from './NotFoundPage'
 
 export function InvoiceEditorPage() {
   const { id } = useParams()
-  if (id === undefined) return <Editor />
+  if (id === undefined) return <CreateNew />
 
   const invoiceId = Number(id)
   if (!Number.isInteger(invoiceId)) return <NotFoundPage message="That invoice doesn't exist." />
   return <EditExisting id={invoiceId} />
+}
+
+/** New invoices start from the company's numbering sequence, currency, terms, tax and details. */
+function CreateNew() {
+  const { data: tenant, isPending } = useCurrentTenant()
+  if (isPending) return <Spinner label="Loading" />
+
+  const defaults = tenant
+    ? newInvoiceValues(undefined, {
+        invoiceNumber: tenant.nextInvoiceNumber,
+        currency: tenant.settings.profile.defaultCurrency,
+        paymentTermsDays: tenant.settings.invoice.defaultPaymentTermsDays,
+        taxRate: tenant.settings.invoice.defaultTaxRate,
+        from: tenant.invoiceSenderDetails,
+        notes: tenant.settings.invoice.defaultNotes,
+      })
+    : newInvoiceValues()
+
+  return <Editor defaultValues={defaults} />
 }
 
 function EditExisting({ id }: { id: number }) {
@@ -27,7 +47,7 @@ function EditExisting({ id }: { id: number }) {
   return <Editor id={id} defaultValues={invoiceToValues(invoice)} />
 }
 
-function Editor({ id, defaultValues }: { id?: number; defaultValues?: InvoiceFormValues }) {
+function Editor({ id, defaultValues }: { id?: number; defaultValues: InvoiceFormValues }) {
   const navigate = useNavigate()
   const save = useSaveInvoice(id)
   const isNew = id === undefined
@@ -40,11 +60,11 @@ function Editor({ id, defaultValues }: { id?: number; defaultValues?: InvoiceFor
   return (
     <>
       <PageHeader
-        title={isNew ? 'New invoice' : `Edit ${defaultValues?.invoiceNumber}`}
+        title={isNew ? 'New invoice' : `Edit ${defaultValues.invoiceNumber}`}
         description={isNew ? 'Totals update as you type.' : 'Changes are saved when you click Save changes.'}
       />
       <InvoiceForm
-        defaultValues={defaultValues ?? newInvoiceValues()}
+        defaultValues={defaultValues}
         onSubmit={submit}
         onCancel={() => navigate(isNew ? '/' : `/invoices/${id}`)}
         submitLabel={isNew ? 'Create invoice' : 'Save changes'}
