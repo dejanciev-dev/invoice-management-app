@@ -649,7 +649,7 @@ Suggested labels: `phase:2`…`phase:7`, `area:backend`, `area:frontend`, `area:
 
 ### Milestone M2 – Complete Invoice Management
 
-- [ ] Persist invoice totals and filter/sort/paginate in SQL `area:db` `P0`
+- [x] Persist invoice totals and filter/sort/paginate in SQL `area:db` `P0`
 - [x] Tenant time zone for "today" and overdue status `area:backend` `P0`
 - [ ] Customer entity, CRUD API and pages `area:backend` `area:frontend` `P0`
 - [ ] Migrate existing invoice "To" text into customers `area:db` `P0`

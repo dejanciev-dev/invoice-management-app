@@ -151,7 +151,8 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` `POST` `PUT` `DELETE` | `/api/tenant/users/...` | Members, roles, permissions, invitations, password resets |
 | `GET` | `/api/tenant/audit-logs` | The company's activity log |
 | `GET` | `/api/reports/summary` | Financial summary per currency |
-| `GET` | `/api/invoices?search=&status=` | List invoices (summaries) |
+| `GET` | `/api/invoices?search=&status=&page=&pageSize=` | A page of invoice summaries (filtered and paged in SQL, up to 100 per page) |
+| `GET` | `/api/invoices/stats` | Invoice counts and outstanding, overdue and billed amounts per currency |
 | `GET` | `/api/invoices/{id}` | Invoice with items and totals |
 | `POST` | `/api/invoices` | Create an invoice |
 | `PUT` | `/api/invoices/{id}` | Update an invoice |
