@@ -21,7 +21,7 @@ public sealed class ImpersonationTests(ApiFactory factory) : IClassFixture<ApiFa
 
         var start = await admin.PostJsonAsync("/api/admin/impersonation", new StartImpersonationCommand(tenant.UserId, tenant.TenantId, "Ticket #42"));
         var session = await admin.GetAsync<SessionDto>("/api/me");
-        var invoices = await admin.GetAsync<List<InvoiceSummaryDto>>("/api/invoices");
+        var invoices = await admin.GetInvoicesAsync("/api/invoices");
 
         start.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         session.UserId.ShouldBe(tenant.UserId);

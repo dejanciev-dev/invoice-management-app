@@ -31,7 +31,7 @@ public sealed class UserManagementTests(ApiFactory factory) : IClassFixture<ApiF
         factory.Notifications.ShouldContain(n => n.To == email && n.Body.Contains(invitation.Token));
 
         var employee = await factory.SignInWithBearerAsync(email);
-        (await employee.GetAsync<List<InvoiceSummaryDto>>("/api/invoices")).ShouldHaveSingleItem().Id.ShouldBe(invoice.Id);
+        (await employee.GetInvoicesAsync("/api/invoices")).ShouldHaveSingleItem().Id.ShouldBe(invoice.Id);
         var members = await company.Client.GetAsync<List<MemberDto>>("/api/tenant/users");
         members.ShouldContain(m => m.Email == email && m.Role == TenantRole.Employee && m.DisplayName == "Erin Employee");
     }

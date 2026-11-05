@@ -53,7 +53,7 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         settings.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         create.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         export.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await theirs.Client.GetAsync<List<InvoiceSummaryDto>>("/api/invoices")).ShouldHaveSingleItem();
+        (await theirs.Client.GetInvoicesAsync("/api/invoices")).ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -85,8 +85,8 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
             .StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var session = await first.Client.GetAsync<SessionDto>("/api/me");
-        var inFirst = await first.Client.GetAsync<List<InvoiceSummaryDto>>("/api/invoices", first.TenantId);
-        var inSecond = await first.Client.GetAsync<List<InvoiceSummaryDto>>("/api/invoices", second.TenantId);
+        var inFirst = await first.Client.GetInvoicesAsync("/api/invoices", first.TenantId);
+        var inSecond = await first.Client.GetInvoicesAsync("/api/invoices", second.TenantId);
         var secondSession = await first.Client.GetAsync<SessionDto>("/api/me", second.TenantId);
 
         session.Tenants.Select(t => t.Id).ShouldBe([first.TenantId, second.TenantId], ignoreOrder: true);
