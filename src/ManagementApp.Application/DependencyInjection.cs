@@ -24,6 +24,7 @@ public static class DependencyInjection
 
         services.AddScoped<GetInvoicesHandler>();
         services.AddScoped<GetInvoiceHandler>();
+        services.AddScoped<GetInvoiceStatsHandler>();
         services.AddScoped<ExportInvoicesHandler>();
         services.AddScoped<CreateInvoiceHandler>();
         services.AddScoped<UpdateInvoiceHandler>();
