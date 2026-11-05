@@ -16,3 +16,6 @@ export const buttonClass = (variant: ButtonVariant = 'primary') => `${buttonBase
 export const inputClass =
   'block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink shadow-xs placeholder:text-muted/70 ' +
   'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 aria-invalid:border-red-500 aria-invalid:ring-red-500/20'
+
+export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `text-sm font-medium whitespace-nowrap ${isActive ? 'text-ink active' : 'text-muted hover:text-ink'}`
