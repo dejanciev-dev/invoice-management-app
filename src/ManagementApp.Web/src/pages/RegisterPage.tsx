@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { useLogin, useRegister } from '../api/auth'
+import { useLogin, useSignup } from '../api/auth'
 import { ApiError } from '../api/client'
 import { AuthShell } from '../components/AuthShell'
 import { inputClass } from '../components/styles'
 import { Alert, Button, Field } from '../components/ui'
 
 export function RegisterPage() {
-  const register = useRegister()
+  const signup = useSignup()
   const login = useLogin()
+  const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -22,21 +23,21 @@ export function RegisterPage() {
     }
     setMismatch(false)
 
-    await register.mutateAsync({ email, password })
+    await signup.mutateAsync({ companyName, email, password })
     login.mutate({ email, password, remember: true })
   }
 
   const errors =
-    register.error instanceof ApiError
-      ? register.error.messages
-      : register.error || login.error
+    signup.error instanceof ApiError
+      ? signup.error.messages
+      : signup.error || login.error
         ? ['Something went wrong. Please try again.']
         : []
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Start sending invoices in under a minute."
+      title="Create your company account"
+      subtitle="Start a free 14-day trial. You'll be the admin of your company."
       footer={
         <>
           Already have an account?{' '}
@@ -56,6 +57,16 @@ export function RegisterPage() {
             </ul>
           </Alert>
         )}
+        <Field label="Company name" htmlFor="companyName">
+          <input
+            id="companyName"
+            autoComplete="organization"
+            required
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
         <Field label="Email" htmlFor="email">
           <input
             id="email"
@@ -94,7 +105,7 @@ export function RegisterPage() {
             className={inputClass}
           />
         </Field>
-        <Button type="submit" className="w-full" loading={register.isPending || login.isPending}>
+        <Button type="submit" className="w-full" loading={signup.isPending || login.isPending}>
           Create account
         </Button>
       </form>
