@@ -1,4 +1,5 @@
 ﻿using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Application.Common;
 using ManagementApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,7 +7,7 @@ namespace ManagementApp.Application.Invoices.Queries;
 
 public sealed record GetInvoicesQuery(string? Search = null, InvoiceStatus? Status = null);
 
-public sealed class GetInvoicesHandler(IApplicationDbContext context, TimeProvider timeProvider)
+public sealed class GetInvoicesHandler(IApplicationDbContext context, TenantClock tenantClock)
 {
     public async Task<IReadOnlyList<InvoiceSummaryDto>> HandleAsync(GetInvoicesQuery query, CancellationToken cancellationToken)
     {
@@ -25,7 +26,7 @@ public sealed class GetInvoicesHandler(IApplicationDbContext context, TimeProvid
             .ToListAsync(cancellationToken);
 
         // Status depends on the current date and computed totals, so it is filtered after loading.
-        var today = timeProvider.Today();
+        var today = await tenantClock.TodayAsync(cancellationToken);
         return results
             .Select(i => i.ToSummaryDto(today))
             .Where(i => query.Status is null || i.Status == query.Status)

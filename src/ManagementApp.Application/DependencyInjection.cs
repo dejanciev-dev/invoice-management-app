@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using ManagementApp.Application.Accounts;
 using ManagementApp.Application.Auditing;
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<SubscriptionGuard>();
+        services.AddScoped<TenantClock>();
 
         services.AddScoped<GetInvoicesHandler>();
         services.AddScoped<GetInvoiceHandler>();

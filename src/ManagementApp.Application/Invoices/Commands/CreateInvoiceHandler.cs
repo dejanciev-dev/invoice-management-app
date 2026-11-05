@@ -1,3 +1,4 @@
+using ManagementApp.Application.Common;
 using FluentValidation;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Common.Subscriptions;
@@ -14,7 +15,7 @@ public sealed class CreateInvoiceHandler(
     SubscriptionGuard subscriptionGuard,
     IAuditLogger auditLogger,
     IValidator<SaveInvoiceCommand> validator,
-    TimeProvider timeProvider)
+    TenantClock tenantClock)
 {
     public async Task<InvoiceDto> HandleAsync(SaveInvoiceCommand command, CancellationToken cancellationToken)
     {
@@ -51,6 +52,6 @@ public sealed class CreateInvoiceHandler(
             Details = new { invoice.InvoiceNumber, invoice.Currency, invoice.Total }
         }, cancellationToken);
 
-        return invoice.ToDto(timeProvider.Today());
+        return invoice.ToDto(await tenantClock.TodayAsync(cancellationToken));
     }
 }

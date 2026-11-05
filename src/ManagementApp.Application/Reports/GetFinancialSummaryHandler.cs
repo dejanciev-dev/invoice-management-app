@@ -1,3 +1,4 @@
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Application.Invoices;
@@ -39,7 +40,7 @@ public static class InvoiceStatistics
 public sealed class GetFinancialSummaryHandler(
     IApplicationDbContext context,
     SubscriptionGuard subscriptionGuard,
-    TimeProvider timeProvider)
+    TenantClock tenantClock)
 {
     public async Task<FinancialSummaryDto> HandleAsync(CancellationToken cancellationToken)
     {
@@ -47,7 +48,7 @@ public sealed class GetFinancialSummaryHandler(
 
         // Totals are computed in the domain model, so invoices are loaded; the query filter keeps them to this tenant.
         var invoices = await context.Invoices.AsNoTracking().ToListAsync(cancellationToken);
-        var today = timeProvider.Today();
+        var today = await tenantClock.TodayAsync(cancellationToken);
         var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-11);
 
         var monthly = invoices
