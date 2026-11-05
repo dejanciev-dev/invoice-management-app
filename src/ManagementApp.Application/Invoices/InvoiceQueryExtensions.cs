@@ -7,23 +7,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices;
 
+/// <remarks>
+/// Invoices are scoped to the current tenant by the DbContext's global query filter, so these helpers never see
+/// another tenant's invoices. An invoice in another tenant is reported as not found, which does not reveal that it exists.
+/// </remarks>
 internal static class InvoiceQueryExtensions
 {
-    public static IQueryable<Invoice> OwnedBy(this IQueryable<Invoice> invoices, string userId) =>
-        invoices.Where(i => i.OwnerId == userId);
-
-    public static async Task<Invoice> GetOwnedAsync(
-        this IQueryable<Invoice> invoices, int id, string userId, CancellationToken cancellationToken) =>
-        await invoices.OwnedBy(userId).FirstOrDefaultAsync(i => i.Id == id, cancellationToken)
+    public static async Task<Invoice> GetAsync(
+        this IQueryable<Invoice> invoices, int id, CancellationToken cancellationToken) =>
+        await invoices.FirstOrDefaultAsync(i => i.Id == id, cancellationToken)
             ?? throw new NotFoundException(nameof(Invoice), id);
 
     public static async Task EnsureInvoiceNumberIsUniqueAsync(
-        this IQueryable<Invoice> invoices, string invoiceNumber, string userId, int? excludeId, CancellationToken cancellationToken)
+        this IQueryable<Invoice> invoices, string invoiceNumber, int? excludeId, CancellationToken cancellationToken)
     {
         var number = invoiceNumber.Trim();
-        var taken = await invoices
-            .OwnedBy(userId)
-            .AnyAsync(i => i.InvoiceNumber == number && i.Id != excludeId, cancellationToken);
+        var taken = await invoices.AnyAsync(i => i.InvoiceNumber == number && i.Id != excludeId, cancellationToken);
 
         if (taken)
         {
