@@ -3,10 +3,14 @@ using ManagementApp.Domain.Enums;
 
 namespace ManagementApp.Domain.Entities;
 
-public class Invoice : AuditableEntity
+public class Invoice : AuditableEntity, ITenantEntity
 {
     public int Id { get; set; }
 
+    /// <summary>The company the invoice belongs to. Every member of the tenant with access to invoices can see it.</summary>
+    public Guid TenantId { get; set; }
+
+    /// <summary>The user who created the invoice.</summary>
     public required string OwnerId { get; set; }
 
     public required string InvoiceNumber { get; set; }
