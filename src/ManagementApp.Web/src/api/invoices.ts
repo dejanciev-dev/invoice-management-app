@@ -1,33 +1,40 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiRequest, json, withTenant } from './client'
-import type { Invoice, InvoiceStatus, InvoiceSummary, SaveInvoiceRequest } from './types'
+import { apiRequest, json, query, withTenant } from './client'
+import type { Invoice, InvoiceStats, InvoiceStatus, InvoiceSummary, Paged, SaveInvoiceRequest } from './types'
+
+export const INVOICE_PAGE_SIZE = 25
 
 export interface InvoiceFilters {
   search?: string
   status?: InvoiceStatus
+  page?: number
 }
 
 export const invoiceKeys = {
   all: ['invoices'] as const,
   list: (filters: InvoiceFilters) => [...invoiceKeys.all, 'list', filters] as const,
+  stats: () => [...invoiceKeys.all, 'stats'] as const,
   detail: (id: number) => [...invoiceKeys.all, 'detail', id] as const,
 }
 
 /** A plain download link, so the active company travels in the query string. */
 export const invoiceExportUrl = () => withTenant('/api/invoices/export')
 
+/** One page of invoices; searching, filtering and paging happen on the server. */
 export function useInvoices(filters: InvoiceFilters = {}) {
   return useQuery({
     queryKey: invoiceKeys.list(filters),
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (filters.search) params.set('search', filters.search)
-      if (filters.status) params.set('status', filters.status)
-      const query = params.size > 0 ? `?${params}` : ''
-      return apiRequest<InvoiceSummary[]>(`/invoices${query}`)
-    },
+    queryFn: () =>
+      apiRequest<Paged<InvoiceSummary>>(
+        `/invoices${query({ search: filters.search, status: filters.status, page: filters.page, pageSize: INVOICE_PAGE_SIZE })}`,
+      ),
     placeholderData: keepPreviousData,
   })
+}
+
+/** Counts and amounts per currency for the dashboard tiles, across all invoices. */
+export function useInvoiceStats() {
+  return useQuery({ queryKey: invoiceKeys.stats(), queryFn: () => apiRequest<InvoiceStats>('/invoices/stats') })
 }
 
 export function useInvoice(id: number) {
