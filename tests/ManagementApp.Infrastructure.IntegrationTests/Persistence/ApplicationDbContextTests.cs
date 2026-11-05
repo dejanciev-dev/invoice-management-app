@@ -78,12 +78,23 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     }
 
     [Fact]
-    public async Task InvoiceNumber_IsUniquePerOwner()
+    public async Task InvoiceNumber_IsUniquePerTenant()
     {
         Context.Invoices.Add(NewInvoice("INV-001"));
         Context.Invoices.Add(NewInvoice("INV-001"));
 
         await Should.ThrowAsync<DbUpdateException>(() => Context.SaveChangesAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task InvoiceNumber_CanBeReusedByAnotherTenant()
+    {
+        Context.Invoices.Add(NewInvoice("INV-001"));
+        await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await using var other = CreateContext(OtherTenantId);
+        other.Invoices.Add(NewInvoice("INV-001"));
+        await other.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private static Invoice NewInvoice(string number, params InvoiceItem[] items)
