@@ -27,7 +27,7 @@ public sealed class OverdueInvoiceReminderJob(TenantJobRunner runner, TimeProvid
             }
 
             // The tenant query filter limits this to the tenant set by the runner.
-            var today = timeProvider.Today();
+            var today = tenant.LocalDate(timeProvider.GetUtcNow());
             var overdue = (await context.Invoices.AsNoTracking().ToListAsync(ct))
                 .Where(i => i.GetStatus(today) == InvoiceStatus.Overdue)
                 .OrderBy(i => i.DueDate)
