@@ -1,9 +1,10 @@
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices.Queries;
 
-public sealed class GetInvoiceHandler(IApplicationDbContext context, TimeProvider timeProvider)
+public sealed class GetInvoiceHandler(IApplicationDbContext context, TenantClock tenantClock)
 {
     public async Task<InvoiceDto> HandleAsync(int id, CancellationToken cancellationToken)
     {
@@ -11,6 +12,6 @@ public sealed class GetInvoiceHandler(IApplicationDbContext context, TimeProvide
             .AsNoTracking()
             .GetAsync(id, cancellationToken);
 
-        return invoice.ToDto(timeProvider.Today());
+        return invoice.ToDto(await tenantClock.TodayAsync(cancellationToken));
     }
 }

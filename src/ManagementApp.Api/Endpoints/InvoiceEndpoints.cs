@@ -1,4 +1,5 @@
 using ManagementApp.Api.Infrastructure;
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
@@ -38,10 +39,10 @@ public static class InvoiceEndpoints
         TypedResults.Ok(await handler.HandleAsync(query, cancellationToken));
 
     private static async Task<FileContentHttpResult> ExportInvoices(
-        ExportInvoicesHandler handler, TimeProvider timeProvider, CancellationToken cancellationToken)
+        ExportInvoicesHandler handler, TenantClock tenantClock, CancellationToken cancellationToken)
     {
         var file = await handler.HandleAsync(cancellationToken);
-        return TypedResults.File(file, "text/csv", $"invoices-{timeProvider.Today():yyyy-MM-dd}.csv");
+        return TypedResults.File(file, "text/csv", $"invoices-{await tenantClock.TodayAsync(cancellationToken):yyyy-MM-dd}.csv");
     }
 
     private static async Task<Ok<InvoiceDto>> GetInvoice(

@@ -54,7 +54,4 @@ public static class InvoiceMappings
         invoice.AmountPaid,
         invoice.BalanceDue,
         invoice.GetStatus(today));
-
-    public static DateOnly Today(this TimeProvider timeProvider) =>
-        DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 }

@@ -1,3 +1,4 @@
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Domain.Auditing;
@@ -12,7 +13,7 @@ public sealed class ExportInvoicesHandler(
     SubscriptionGuard subscriptionGuard,
     IAuditLogger auditLogger,
     ICsvFileBuilder csvFileBuilder,
-    TimeProvider timeProvider)
+    TenantClock tenantClock)
 {
     public async Task<byte[]> HandleAsync(CancellationToken cancellationToken)
     {
@@ -30,7 +31,7 @@ public sealed class ExportInvoicesHandler(
             Details = new { Count = invoices.Count }
         }, cancellationToken);
 
-        var today = timeProvider.Today();
+        var today = await tenantClock.TodayAsync(cancellationToken);
         return csvFileBuilder.BuildInvoiceFile(invoices.Select(i => i.ToRecord(today)));
     }
 }

@@ -78,7 +78,7 @@ public sealed class GetTenantDetailsHandler(IApplicationDbContext context, TimeP
             ?? throw new NotFoundException(nameof(Tenant), tenantId);
 
         var now = timeProvider.GetUtcNow();
-        var today = timeProvider.Today();
+        var today = tenant.LocalDate(now);
         var monthStart = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
 
         var memberships = await context.TenantMemberships.IgnoreQueryFilters().AsNoTracking()
