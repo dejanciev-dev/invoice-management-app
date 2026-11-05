@@ -1,4 +1,5 @@
-﻿using ManagementApp.Application.Common.Interfaces;
+﻿using ManagementApp.Application.Invoices;
+using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
@@ -39,6 +40,7 @@ public class ApplicationDbContext(
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         EnforceTenantBoundaries();
+        StoreInvoiceTotals();
         SetAuditFields();
         return base.SaveChangesAsync(cancellationToken);
     }
@@ -46,6 +48,7 @@ public class ApplicationDbContext(
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         EnforceTenantBoundaries();
+        StoreInvoiceTotals();
         SetAuditFields();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -105,6 +108,27 @@ public class ApplicationDbContext(
 
     private static InvalidOperationException CrossTenantWrite(string entity) =>
         new($"Refusing to write a {entity} that belongs to another tenant.");
+
+    /// <summary>
+    /// Copies each tracked invoice's calculated totals into its stored columns. Unchanged invoices are included too,
+    /// because replacing line items changes the totals without touching the invoice row itself.
+    /// </summary>
+    private void StoreInvoiceTotals()
+    {
+        foreach (var entry in ChangeTracker.Entries<Invoice>().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Unchanged))
+        {
+            Store(entry.Property<decimal>(InvoiceTotalsQueries.StoredTotal), entry.Entity.Total);
+            Store(entry.Property<decimal>(InvoiceTotalsQueries.StoredBalanceDue), entry.Entity.BalanceDue);
+        }
+
+        static void Store(Microsoft.EntityFrameworkCore.ChangeTracking.PropertyEntry<Invoice, decimal> property, decimal value)
+        {
+            if (property.CurrentValue != value)
+            {
+                property.CurrentValue = value;
+            }
+        }
+    }
 
     private void SetAuditFields()
     {
