@@ -1,13 +1,13 @@
 import { Download, FileText, Plus, Search } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { useCan } from '../api/auth'
-import { invoiceExportUrl, useInvoices } from '../api/invoices'
-import type { InvoiceStatus, InvoiceSummary } from '../api/types'
+import { useCan, useCurrentUser } from '../api/auth'
+import { invoiceExportUrl, useInvoices, useInvoiceStats } from '../api/invoices'
+import type { InvoiceStats, InvoiceStatus, InvoiceSummary } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { buttonClass, inputClass } from '../components/styles'
 import { statusLabels } from '../lib/status'
-import { Alert, ButtonLink, Card, PageHeader, Spinner } from '../components/ui'
+import { Alert, ButtonLink, Card, PageHeader, Pager, Spinner } from '../components/ui'
 import { firstLine, formatDate, formatMoney, formatTotalsByCurrency } from '../lib/format'
 
 const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid']
@@ -15,19 +15,22 @@ const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Unpaid', 'Part
 export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const status = (searchParams.get('status') as InvoiceStatus | null) ?? undefined
+  const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const deferredSearch = useDeferredValue(search.trim())
 
-  const filtered = useInvoices({ search: deferredSearch || undefined, status })
-  const all = useInvoices()
+  const filtered = useInvoices({ search: deferredSearch || undefined, status, page })
+  const stats = useInvoiceStats()
   const canCreate = useCan('InvoicesCreate')
   const canExport = useCan('InvoicesExport')
 
+  /** Changing a filter starts again from the first page; changing the page keeps the filters. */
   const updateParam = (key: string, value: string | undefined) =>
     setSearchParams(
       (params) => {
         if (value) params.set(key, value)
         else params.delete(key)
+        if (key !== 'page') params.delete('page')
         return params
       },
       { replace: true },
@@ -56,7 +59,7 @@ export function InvoicesPage() {
         }
       />
 
-      {all.data && <Stats invoices={all.data} />}
+      {stats.data && <Stats stats={stats.data} />}
 
       <Card className="overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-line p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -98,26 +101,40 @@ export function InvoicesPage() {
           <div className="p-4">
             <Alert>Could not load invoices. Please refresh the page.</Alert>
           </div>
-        ) : filtered.data.length === 0 ? (
+        ) : filtered.data.items.length === 0 ? (
           <EmptyState filtered={Boolean(status || deferredSearch)} />
         ) : (
-          <InvoiceTable invoices={filtered.data} />
+          <>
+            <InvoiceTable invoices={filtered.data.items} />
+            <Pager
+              page={filtered.data.page}
+              pageSize={filtered.data.pageSize}
+              total={filtered.data.total}
+              onChange={(next) => updateParam('page', next > 1 ? String(next) : undefined)}
+            />
+          </>
         )}
       </Card>
     </>
   )
 }
 
-function Stats({ invoices }: { invoices: InvoiceSummary[] }) {
-  const open = invoices.filter((i) => i.status !== 'Paid')
-  const overdue = invoices.filter((i) => i.status === 'Overdue')
-
+/** Totals across all of the company's invoices (not just the current page), calculated on the server. */
+function Stats({ stats: { currencies, openCount, overdueCount, invoiceCount } }: { stats: InvoiceStats }) {
   const count = (n: number) => `${n} ${n === 1 ? 'invoice' : 'invoices'}`
+  const { data: session } = useCurrentUser()
+  const fallbackCurrency = session?.activeTenant?.defaultCurrency ?? currencies[0]?.currency ?? 'USD'
+
+  // Currencies with nothing to show are left out; if none is left, show zero in the company's own currency.
+  const per = (amount: (c: InvoiceStats['currencies'][number]) => number) => {
+    const entries = currencies.map((c) => ({ amount: amount(c), currency: c.currency })).filter((e) => e.amount !== 0)
+    return entries.length > 0 ? formatTotalsByCurrency(entries) : formatMoney(0, fallbackCurrency)
+  }
 
   const stats = [
-    { label: 'Outstanding', value: formatTotalsByCurrency(open.map((i) => ({ amount: i.balanceDue, currency: i.currency }))), detail: `${open.length} open` },
-    { label: 'Overdue', value: formatTotalsByCurrency(overdue.map((i) => ({ amount: i.balanceDue, currency: i.currency }))), detail: count(overdue.length) },
-    { label: 'Total billed', value: formatTotalsByCurrency(invoices.map((i) => ({ amount: i.total, currency: i.currency }))), detail: count(invoices.length) },
+    { label: 'Outstanding', value: per((c) => c.outstanding), detail: `${openCount} open` },
+    { label: 'Overdue', value: per((c) => c.overdue), detail: count(overdueCount) },
+    { label: 'Total billed', value: per((c) => c.billed), detail: count(invoiceCount) },
   ]
 
   return (

@@ -46,6 +46,23 @@ export interface InvoiceSummary {
   status: InvoiceStatus
 }
 
+export interface CurrencyInvoiceStats {
+  currency: string
+  invoiceCount: number
+  billed: number
+  openCount: number
+  outstanding: number
+  overdueCount: number
+  overdue: number
+}
+
+export interface InvoiceStats {
+  invoiceCount: number
+  openCount: number
+  overdueCount: number
+  currencies: CurrencyInvoiceStats[]
+}
+
 export interface SaveInvoiceRequest {
   invoiceNumber: string
   from: string
