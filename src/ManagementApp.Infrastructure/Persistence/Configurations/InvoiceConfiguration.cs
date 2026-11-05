@@ -1,4 +1,5 @@
 ﻿using ManagementApp.Domain.Entities;
+using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,12 +23,21 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.DiscountType).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.TaxType).HasConversion<string>().HasMaxLength(20);
 
+        // Invoices belong to the company, so they are never deleted along with the user who created them.
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(i => i.OwnerId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(i => new { i.OwnerId, i.InvoiceNumber }).IsUnique();
+        builder.HasOne<Tenant>()
+            .WithMany()
+            .HasForeignKey(i => i.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Numbers are unique per company; the index also serves every tenant-filtered invoice query.
+        builder.HasIndex(i => new { i.TenantId, i.InvoiceNumber }).IsUnique();
+        builder.HasIndex(i => new { i.TenantId, i.IssueDate });
+        builder.HasIndex(i => i.OwnerId);
 
         builder.HasMany(i => i.Items)
             .WithOne()
