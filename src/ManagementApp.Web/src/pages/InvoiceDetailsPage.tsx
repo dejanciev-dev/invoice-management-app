@@ -1,9 +1,11 @@
 import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
 import { useDeleteInvoice, useInvoice } from '../api/invoices'
-import type { Invoice } from '../api/types'
+import { tenantLogoUrl, useCurrentTenant } from '../api/tenant'
+import type { CurrentTenant, Invoice } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { Alert, Button, ButtonLink, Card, Spinner } from '../components/ui'
 import { formatDate, formatMoney } from '../lib/format'
@@ -17,6 +19,7 @@ export function InvoiceDetailsPage() {
 
 function InvoiceDetails({ id }: { id: number }) {
   const { data: invoice, error, isPending } = useInvoice(id)
+  const { data: tenant } = useCurrentTenant()
 
   if (isPending) return <Spinner label="Loading invoice" />
   if (error instanceof ApiError && error.status === 404) {
@@ -27,7 +30,7 @@ function InvoiceDetails({ id }: { id: number }) {
   return (
     <>
       <Toolbar invoice={invoice} />
-      <InvoiceDocument invoice={invoice} />
+      <InvoiceDocument invoice={invoice} tenant={tenant} />
     </>
   )
 }
@@ -36,6 +39,8 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
   const navigate = useNavigate()
   const deleteInvoice = useDeleteInvoice()
   const [confirming, setConfirming] = useState(false)
+  const canEdit = useCan('InvoicesEdit')
+  const canDelete = useCan('InvoicesDelete')
 
   const remove = () =>
     deleteInvoice.mutate(invoice.id, { onSuccess: () => navigate('/', { replace: true }) })
@@ -62,28 +67,39 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
             <Printer className="size-4" aria-hidden />
             Print
           </Button>
-          <Button variant="secondary" onClick={() => setConfirming(true)}>
-            <Trash2 className="size-4" aria-hidden />
-            Delete
-          </Button>
-          <ButtonLink to={`/invoices/${invoice.id}/edit`}>
-            <Pencil className="size-4" aria-hidden />
-            Edit
-          </ButtonLink>
+          {canDelete && (
+            <Button variant="secondary" onClick={() => setConfirming(true)}>
+              <Trash2 className="size-4" aria-hidden />
+              Delete
+            </Button>
+          )}
+          {canEdit && (
+            <ButtonLink to={`/invoices/${invoice.id}/edit`}>
+              <Pencil className="size-4" aria-hidden />
+              Edit
+            </ButtonLink>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function InvoiceDocument({ invoice }: { invoice: Invoice }) {
+function InvoiceDocument({ invoice, tenant }: { invoice: Invoice; tenant?: CurrentTenant }) {
   const money = (amount: number) => formatMoney(amount, invoice.currency)
+  const brandColor = tenant?.settings.invoice.brandColor ?? undefined
+  const taxLabel = tenant?.settings.invoice.taxLabel ?? 'Tax'
+  const footer = tenant?.settings.invoice.footer
 
   return (
     <Card className="p-6 sm:p-10 print:border-0 print:shadow-none">
+      {brandColor && <div className="-mx-6 -mt-6 mb-6 h-1.5 rounded-t-xl sm:-mx-10 sm:-mt-10" style={{ backgroundColor: brandColor }} />}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-medium tracking-wide text-muted uppercase">Invoice</p>
+          {tenant?.hasLogo && <img src={tenantLogoUrl(tenant.id)} alt={tenant.settings.profile.name} className="mb-4 max-h-14 max-w-48 object-contain" />}
+          <p className="text-sm font-medium tracking-wide text-muted uppercase" style={brandColor ? { color: brandColor } : undefined}>
+            Invoice
+          </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">{invoice.invoiceNumber}</h1>
           <div className="mt-3">
             <StatusBadge status={invoice.status} />
@@ -147,7 +163,7 @@ function InvoiceDocument({ invoice }: { invoice: Invoice }) {
           )}
           {invoice.taxAmount > 0 && (
             <TotalRow
-              label={invoice.taxType === 'Percentage' ? `Tax (${invoice.tax}%)` : 'Tax'}
+              label={invoice.taxType === 'Percentage' ? `${taxLabel} (${invoice.tax}%)` : taxLabel}
               value={money(invoice.taxAmount)}
             />
           )}
@@ -159,6 +175,8 @@ function InvoiceDocument({ invoice }: { invoice: Invoice }) {
           </div>
         </dl>
       </div>
+
+      {footer && <p className="mt-10 border-t border-line pt-4 text-center text-xs whitespace-pre-line text-muted">{footer}</p>}
     </Card>
   )
 }
