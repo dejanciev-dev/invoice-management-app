@@ -20,7 +20,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
-builder.Services.AddAuthorization();
+builder.Services.AddAppAuthorization();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -54,10 +54,14 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseAuthentication();
+// Establishes the tenant from the user's verified membership before any authorization decision is made.
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 
 app.MapAuthEndpoints();
+app.MapTenantEndpoints();
 app.MapInvoiceEndpoints();
+app.MapAdminEndpoints();
 app.MapHealthChecks("/health");
 
 // Unknown API routes return 404; every other route is handled by the client-side router.
