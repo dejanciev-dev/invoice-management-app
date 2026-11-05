@@ -53,6 +53,9 @@ public class Tenant : AuditableEntity
         StatusChangedAt = now;
     }
 
+    /// <summary>The calendar date at <paramref name="instant"/> in the company's time zone.</summary>
+    public DateOnly LocalDate(DateTimeOffset instant) => TenantTime.LocalDate(TimeZone, instant);
+
     /// <summary>The company block printed in the "From" section of a new invoice.</summary>
     public string InvoiceSenderDetails()
     {
