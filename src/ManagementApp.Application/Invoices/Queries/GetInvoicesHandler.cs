@@ -6,16 +6,12 @@ namespace ManagementApp.Application.Invoices.Queries;
 
 public sealed record GetInvoicesQuery(string? Search = null, InvoiceStatus? Status = null);
 
-public sealed class GetInvoicesHandler(
-    IApplicationDbContext context,
-    ICurrentUserService currentUser,
-    TimeProvider timeProvider)
+public sealed class GetInvoicesHandler(IApplicationDbContext context, TimeProvider timeProvider)
 {
     public async Task<IReadOnlyList<InvoiceSummaryDto>> HandleAsync(GetInvoicesQuery query, CancellationToken cancellationToken)
     {
-        var invoices = context.Invoices
-            .AsNoTracking()
-            .OwnedBy(currentUser.RequireUserId());
+        // Scoped to the current tenant by the global query filter.
+        IQueryable<Domain.Entities.Invoice> invoices = context.Invoices.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
