@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiRequest, json } from './client'
+import { apiRequest, json, withTenant } from './client'
 import type { Invoice, InvoiceStatus, InvoiceSummary, SaveInvoiceRequest } from './types'
 
 export interface InvoiceFilters {
@@ -13,7 +13,8 @@ export const invoiceKeys = {
   detail: (id: number) => [...invoiceKeys.all, 'detail', id] as const,
 }
 
-export const INVOICE_EXPORT_URL = '/api/invoices/export'
+/** A plain download link, so the active company travels in the query string. */
+export const invoiceExportUrl = () => withTenant('/api/invoices/export')
 
 export function useInvoices(filters: InvoiceFilters = {}) {
   return useQuery({
