@@ -81,6 +81,70 @@ export function Alert({ children }: { children: ReactNode }) {
   )
 }
 
+export function Notice({ children }: { children: ReactNode }) {
+  return (
+    <div
+      role="status"
+      className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200"
+    >
+      {children}
+    </div>
+  )
+}
+
+export function Badge({ className = '', children }: { className?: string; children: ReactNode }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset ${className || 'bg-subtle text-muted ring-line'}`}>
+      {children}
+    </span>
+  )
+}
+
+export function StatTile({ label, value, detail }: { label: string; value: ReactNode; detail?: ReactNode }) {
+  return (
+    <Card className="p-5">
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{value}</dd>
+      {detail && <dd className="mt-1 text-xs text-muted">{detail}</dd>}
+    </Card>
+  )
+}
+
+export function Pager({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize))
+  if (pages <= 1) return null
+  return (
+    <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm text-muted">
+      <span>
+        Page {page} of {pages} · {total} total
+      </span>
+      <div className="flex gap-2">
+        <Button variant="secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="secondary" disabled={page >= pages} onClick={() => onChange(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function EmptyRow({ colSpan, children }: { colSpan: number; children: ReactNode }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-4 py-10 text-center text-sm text-muted">
+        {children}
+      </td>
+    </tr>
+  )
+}
+
+export const tableClass = 'w-full text-left text-sm'
+export const theadClass = 'bg-subtle/60 text-xs font-medium tracking-wide text-muted uppercase'
+export const thClass = 'px-4 py-3'
+export const tdClass = 'px-4 py-3'
+
 export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between print:hidden">
