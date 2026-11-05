@@ -61,19 +61,25 @@ public class Invoice : AuditableEntity, ITenantEntity
 
     public decimal BalanceDue => Total - AmountPaid;
 
-    public InvoiceStatus GetStatus(DateOnly today)
+    public InvoiceStatus GetStatus(DateOnly today) => StatusFor(BalanceDue, AmountPaid, DueDate, today);
+
+    /// <summary>
+    /// The status rule on its own, for callers that only have the stored figures (e.g. a list projected from SQL).
+    /// The SQL filter in the application layer mirrors this rule and is tested against it.
+    /// </summary>
+    public static InvoiceStatus StatusFor(decimal balanceDue, decimal amountPaid, DateOnly? dueDate, DateOnly today)
     {
-        if (BalanceDue <= 0)
+        if (balanceDue <= 0)
         {
             return InvoiceStatus.Paid;
         }
 
-        if (DueDate is { } dueDate && dueDate < today)
+        if (dueDate is { } due && due < today)
         {
             return InvoiceStatus.Overdue;
         }
 
-        return AmountPaid > 0 ? InvoiceStatus.PartiallyPaid : InvoiceStatus.Unpaid;
+        return amountPaid > 0 ? InvoiceStatus.PartiallyPaid : InvoiceStatus.Unpaid;
     }
 
     public void ReplaceItems(IEnumerable<InvoiceItem> items)
