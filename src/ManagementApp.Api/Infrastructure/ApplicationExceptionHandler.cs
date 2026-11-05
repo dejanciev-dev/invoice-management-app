@@ -23,6 +23,12 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problemDe
                 Title = "The requested resource was not found.",
                 Detail = notFound.Message
             },
+            ForbiddenException forbidden => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "You are not allowed to do this.",
+                Detail = forbidden.Message
+            },
             UnauthorizedAccessException => new ProblemDetails
             {
                 Status = StatusCodes.Status401Unauthorized,
