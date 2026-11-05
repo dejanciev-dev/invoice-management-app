@@ -43,6 +43,10 @@ internal static class TestData
         return await response.ReadAsync<T>();
     }
 
+    /// <summary>The items of one page of the invoice list.</summary>
+    public static async Task<IReadOnlyList<InvoiceSummaryDto>> GetInvoicesAsync(this HttpClient client, string url, Guid? tenantId = null) =>
+        (await client.GetAsync<Application.Tenants.PagedResult<InvoiceSummaryDto>>(url, tenantId)).Items;
+
     public static async Task<HttpResponseMessage> SendWithTenantAsync(
         this HttpClient client, HttpMethod method, string url, Guid tenantId, object? body = null)
     {

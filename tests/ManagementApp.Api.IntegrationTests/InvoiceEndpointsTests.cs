@@ -119,7 +119,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         var otherUser = await factory.CreateAuthenticatedClientAsync();
         var created = await CreateAsync(owner, NewInvoice("INV-001"));
 
-        var list = await otherUser.GetFromJsonAsync<List<InvoiceSummaryDto>>("/api/invoices", ApiFactory.Json, CancellationToken);
+        var list = await otherUser.GetInvoicesAsync("/api/invoices");
         var get = await otherUser.GetAsync($"/api/invoices/{created.Id}", CancellationToken);
         var update = await otherUser.PutAsJsonAsync($"/api/invoices/{created.Id}", NewInvoice("HIJACK"), ApiFactory.Json, CancellationToken);
         var delete = await otherUser.DeleteAsync($"/api/invoices/{created.Id}", CancellationToken);
@@ -148,10 +148,10 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         await CreateAsync(client, NewInvoice("INV-002") with { To = "Initech", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) });
         await CreateAsync(client, NewInvoice("INV-003") with { To = "Initech" });
 
-        var all = await client.GetFromJsonAsync<List<InvoiceSummaryDto>>("/api/invoices", ApiFactory.Json, CancellationToken);
-        var initech = await client.GetFromJsonAsync<List<InvoiceSummaryDto>>("/api/invoices?search=Initech", ApiFactory.Json, CancellationToken);
-        var overdue = await client.GetFromJsonAsync<List<InvoiceSummaryDto>>("/api/invoices?status=Overdue", ApiFactory.Json, CancellationToken);
-        var paid = await client.GetFromJsonAsync<List<InvoiceSummaryDto>>("/api/invoices?status=Paid", ApiFactory.Json, CancellationToken);
+        var all = await client.GetInvoicesAsync("/api/invoices");
+        var initech = await client.GetInvoicesAsync("/api/invoices?search=Initech");
+        var overdue = await client.GetInvoicesAsync("/api/invoices?status=Overdue");
+        var paid = await client.GetInvoicesAsync("/api/invoices?status=Paid");
 
         all!.Count.ShouldBe(3);
         initech!.Select(i => i.InvoiceNumber).ShouldBe(["INV-003", "INV-002"], ignoreOrder: true);

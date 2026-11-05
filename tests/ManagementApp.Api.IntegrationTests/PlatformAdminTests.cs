@@ -193,6 +193,6 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         await tenant.Client.CreateInvoiceAsync("INV-001");
         var other = await factory.CreateTenantAsync();
 
-        (await other.Client.GetAsync<List<InvoiceSummaryDto>>("/api/invoices")).ShouldBeEmpty();
+        (await other.Client.GetInvoicesAsync("/api/invoices")).ShouldBeEmpty();
     }
 }

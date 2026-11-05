@@ -27,7 +27,7 @@ public sealed class TenantTimeZoneTests(ApiFactory factory) : IClassFixture<ApiF
         inUtc.Status.ShouldBe(InvoiceStatus.Overdue);
         inHawaii.Status.ShouldBe(InvoiceStatus.Unpaid);
         (await hawaiiCompany.Client.GetAsync<InvoiceDto>($"/api/invoices/{inHawaii.Id}")).Status.ShouldBe(InvoiceStatus.Unpaid);
-        (await hawaiiCompany.Client.GetAsync<List<InvoiceSummaryDto>>("/api/invoices?status=Overdue")).ShouldBeEmpty();
+        (await hawaiiCompany.Client.GetInvoicesAsync("/api/invoices?status=Overdue")).ShouldBeEmpty();
     }
 
     [Fact]
