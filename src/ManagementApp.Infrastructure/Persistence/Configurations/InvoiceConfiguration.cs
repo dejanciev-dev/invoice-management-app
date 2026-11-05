@@ -1,4 +1,5 @@
-﻿using ManagementApp.Domain.Entities;
+﻿using ManagementApp.Application.Invoices;
+using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,10 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.DiscountType).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.TaxType).HasConversion<string>().HasMaxLength(20);
 
+        // Stored copies of the calculated totals, refreshed by ApplicationDbContext on every save (see InvoiceTotalsQueries).
+        builder.Property<decimal>(InvoiceTotalsQueries.StoredTotal).HasColumnName("Total").HasPrecision(18, 2);
+        builder.Property<decimal>(InvoiceTotalsQueries.StoredBalanceDue).HasColumnName("BalanceDue").HasPrecision(18, 2);
+
         // Invoices belong to the company, so they are never deleted along with the user who created them.
         builder.HasOne<ApplicationUser>()
             .WithMany()
@@ -37,6 +42,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         // Numbers are unique per company; the index also serves every tenant-filtered invoice query.
         builder.HasIndex(i => new { i.TenantId, i.InvoiceNumber }).IsUnique();
         builder.HasIndex(i => new { i.TenantId, i.IssueDate });
+        builder.HasIndex(i => new { i.TenantId, i.DueDate }); // overdue filters and statistics
         builder.HasIndex(i => i.OwnerId);
 
         builder.HasMany(i => i.Items)
