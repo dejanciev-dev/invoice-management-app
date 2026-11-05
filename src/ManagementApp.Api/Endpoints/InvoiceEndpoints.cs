@@ -3,6 +3,7 @@ using ManagementApp.Application.Common;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
+using ManagementApp.Application.Tenants;
 using ManagementApp.Domain.Tenancy;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -19,7 +20,9 @@ public static class InvoiceEndpoints
             .RequireAuthorization(Policies.TenantMember);
 
         group.MapGet("/", GetInvoices).RequireAuthorization(Policies.Has(Permission.InvoicesView))
-            .WithSummary("List the current company's invoices");
+            .WithSummary("A page of the current company's invoices (search, status, page, pageSize up to 100)");
+        group.MapGet("/stats", GetInvoiceStats).RequireAuthorization(Policies.Has(Permission.InvoicesView))
+            .WithSummary("Invoice counts and outstanding, overdue and billed amounts per currency");
         group.MapGet("/export", ExportInvoices).RequireAuthorization(Policies.Has(Permission.InvoicesExport))
             .WithSummary("Download all invoices as CSV");
         group.MapGet("/{id:int}", GetInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesView))
@@ -34,9 +37,12 @@ public static class InvoiceEndpoints
         return app;
     }
 
-    private static async Task<Ok<IReadOnlyList<InvoiceSummaryDto>>> GetInvoices(
+    private static async Task<Ok<PagedResult<InvoiceSummaryDto>>> GetInvoices(
         [AsParameters] GetInvoicesQuery query, GetInvoicesHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(query, cancellationToken));
+
+    private static async Task<Ok<InvoiceStatsDto>> GetInvoiceStats(GetInvoiceStatsHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(cancellationToken));
 
     private static async Task<FileContentHttpResult> ExportInvoices(
         ExportInvoicesHandler handler, TenantClock tenantClock, CancellationToken cancellationToken)
