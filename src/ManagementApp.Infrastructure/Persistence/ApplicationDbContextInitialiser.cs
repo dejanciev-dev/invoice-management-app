@@ -1,5 +1,6 @@
 using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Enums;
+using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,9 @@ public class ApplicationDbContextInitialiser(
 {
     public const string DemoUserEmail = "demo@example.com";
     public const string DemoUserPassword = "Demo123!";
+    public const string DemoAdminEmail = "admin@example.com";
+    public const string DemoAdminPassword = "Admin123!";
+    public const string SecondDemoUserEmail = "owner@contoso.example";
 
     public async Task InitialiseAsync()
     {
@@ -54,32 +58,136 @@ public class ApplicationDbContextInitialiser(
 
     public async Task SeedAsync()
     {
+        await GrantConfiguredPlatformAdminsAsync();
+
         if (!configuration.GetValue<bool>("Database:SeedDemoData"))
         {
             return;
         }
 
-        var demoUser = await userManager.FindByEmailAsync(DemoUserEmail);
-        if (demoUser is null)
+        var now = timeProvider.GetUtcNow();
+
+        var admin = await EnsureUserAsync(DemoAdminEmail, DemoAdminPassword, "Platform Admin");
+        if (!admin.IsPlatformAdmin)
         {
-            demoUser = new ApplicationUser { UserName = DemoUserEmail, Email = DemoUserEmail };
-            await userManager.CreateAsync(demoUser, DemoUserPassword);
+            admin.IsPlatformAdmin = true;
+            await userManager.UpdateAsync(admin);
         }
 
-        if (!await context.Invoices.AnyAsync(i => i.OwnerId == demoUser.Id))
+        var demoUser = await EnsureUserAsync(DemoUserEmail, DemoUserPassword, "Demo User");
+        var northwind = await EnsureTenantAsync(demoUser, "Northwind Studio", TenantRole.TenantAdmin, tenant =>
         {
-            context.Invoices.AddRange(CreateDemoInvoices(demoUser.Id));
+            tenant.Address = "42 Harbour Street\nLondon, UK";
+            tenant.Country = "GB";
+            tenant.Email = "billing@northwind.example";
+            tenant.TaxNumber = "GB123456789";
+            tenant.TimeZone = "Europe/London";
+            tenant.InvoiceSettings.NumberPrefix = "INV-2026-";
+            tenant.InvoiceSettings.NumberPadding = 3;
+            tenant.InvoiceSettings.NextNumber = 5;
+            tenant.InvoiceSettings.TaxLabel = "VAT";
+            tenant.Subscription = TenantSubscription.Activate(SubscriptionPlans.Professional, BillingCycle.Yearly, now.AddYears(1));
+        });
+
+        if (!await context.Invoices.IgnoreQueryFilters().AnyAsync(i => i.TenantId == northwind.Id))
+        {
+            context.Invoices.AddRange(CreateDemoInvoices(northwind.Id, demoUser.Id));
+            await context.SaveChangesAsync();
+        }
+
+        // A second company shows that tenants are isolated and gives the platform admin someone to impersonate.
+        var contosoOwner = await EnsureUserAsync(SecondDemoUserEmail, DemoUserPassword, "Contoso Owner");
+        var contoso = await EnsureTenantAsync(contosoOwner, "Contoso Consulting", TenantRole.TenantAdmin, tenant =>
+        {
+            tenant.Address = "1 Main Street\nSeattle, WA";
+            tenant.Country = "US";
+            tenant.Email = "accounts@contoso.example";
+            tenant.TimeZone = "America/Los_Angeles";
+            tenant.Subscription = TenantSubscription.StartTrial(now);
+        });
+
+        if (!await context.Invoices.IgnoreQueryFilters().AnyAsync(i => i.TenantId == contoso.Id))
+        {
+            var invoice = new Invoice
+            {
+                TenantId = contoso.Id,
+                OwnerId = contosoOwner.Id,
+                InvoiceNumber = "INV-0001",
+                From = contoso.InvoiceSenderDetails(),
+                To = "Litware Inc.\n77 Pine Street\nPortland, OR",
+                IssueDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(-10),
+                DueDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(20),
+                PaymentTerms = "Net 30",
+                Currency = "USD"
+            };
+            invoice.ReplaceItems([new InvoiceItem { Description = "Strategy workshop", Quantity = 2, UnitPrice = 1500 }]);
+            context.Invoices.Add(invoice);
+            contoso.InvoiceSettings.NextNumber = 2;
             await context.SaveChangesAsync();
         }
     }
 
-    private IEnumerable<Invoice> CreateDemoInvoices(string ownerId)
+    /// <summary>Accounts listed in <c>Platform:AdminEmails</c> become platform admins; the only way to bootstrap one.</summary>
+    private async Task GrantConfiguredPlatformAdminsAsync()
+    {
+        var emails = configuration.GetSection("Platform:AdminEmails").Get<string[]>() ?? [];
+        foreach (var email in emails.Where(e => !string.IsNullOrWhiteSpace(e)))
+        {
+            var user = await userManager.FindByEmailAsync(email.Trim());
+            if (user is { IsPlatformAdmin: false })
+            {
+                user.IsPlatformAdmin = true;
+                await userManager.UpdateAsync(user);
+                logger.LogInformation("Granted platform admin to {Email} from configuration", email);
+            }
+        }
+    }
+
+    private async Task<ApplicationUser> EnsureUserAsync(string email, string password, string displayName)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                DisplayName = displayName,
+                CreatedAt = timeProvider.GetUtcNow()
+            };
+            await userManager.CreateAsync(user, password);
+        }
+
+        return user;
+    }
+
+    private async Task<Tenant> EnsureTenantAsync(ApplicationUser user, string name, TenantRole role, Action<Tenant> configure)
+    {
+        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Name == name);
+        if (tenant is null)
+        {
+            tenant = new Tenant { Name = name };
+            configure(tenant);
+            context.Tenants.Add(tenant);
+        }
+
+        if (!await context.TenantMemberships.IgnoreQueryFilters().AnyAsync(m => m.TenantId == tenant.Id && m.UserId == user.Id))
+        {
+            context.TenantMemberships.Add(TenantMembership.Create(tenant.Id, user.Id, role));
+        }
+
+        await context.SaveChangesAsync();
+        return tenant;
+    }
+
+    private IEnumerable<Invoice> CreateDemoInvoices(Guid tenantId, string ownerId)
     {
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         const string from = "Northwind Studio\n42 Harbour Street\nLondon, UK";
 
         Invoice NewInvoice(string number, string to, int issuedDaysAgo, int dueInDays) => new()
         {
+            TenantId = tenantId,
             OwnerId = ownerId,
             InvoiceNumber = number,
             From = from,
