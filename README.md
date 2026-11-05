@@ -6,7 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A full-stack invoicing app for freelancers and small businesses. You can create invoices with line items, discounts and tax, track what's paid and what's overdue, print them, and export everything to CSV.
+A multi-tenant invoicing SaaS for small businesses. Each company (tenant) has its own users, roles, invoices, numbering, branding and settings, fully isolated from every other company. Companies create invoices with line items, discounts and tax, track what's paid and what's overdue, print them and export them to CSV. A separate platform admin area manages tenants, subscriptions and users, and lets support staff impersonate a user, with every step audited.
 
 The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The frontend is a **React 19 + TypeScript** single-page app. Both are covered by unit and integration tests and built by CI.
 
@@ -30,7 +30,13 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Live preview:** the editor recalculates totals as you type, using the same half-away-from-zero rounding as the server.
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
 - **CSV export** and a **print-friendly invoice view.**
-- **Accounts:** registration and sign-in with ASP.NET Core Identity. Each user only ever sees their own invoices.
+- **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
+- **Roles and permissions:** Tenant Admin, Manager, Accountant and Employee, each with default permissions that admins can adjust per user. Users join by invitation link or are created by an admin.
+- **Company settings:** profile, tax/VAT details, invoice numbering (prefix, next number, padding), default currency, payment terms and tax rate, logo, brand colour, invoice footer, email and notification preferences.
+- **Platform admin area:** dashboard, tenant management (create, edit, activate, deactivate, suspend, delete with safeguards), subscription plans and limits, global user management and platform-wide activity.
+- **Impersonation:** platform admins can use the app as a tenant user for support, without ever seeing a password. A banner is shown throughout, it ends automatically after an hour, and every action is recorded against the admin.
+- **Audit log:** sign-ins, invoice and payment changes, user and permission changes, tenant changes and impersonation. Tenant admins see their own company's log; platform admins see everything.
+- **Subscription-ready:** plans with user and invoice limits and plan features, trials and expiry (read-only when expired). No payment provider is wired in yet.
 - **Helpful errors:** validation runs on the client (Zod) and the server (FluentValidation). Server errors such as a duplicate invoice number appear next to the field they refer to.
 - **Responsive** layout with **light and dark** themes.
 
@@ -72,8 +78,26 @@ flowchart LR
 - **Plain handlers instead of MediatR and AutoMapper.** Each use case is a small class injected straight into its endpoint, and mapping is explicit. This keeps the code easy to follow and debug, with no reflection and no commercial-license dependencies.
 - **Money is `decimal`, rounded once, in one place.** Line amounts and percentage discounts and taxes are rounded to two decimals, half away from zero. The front-end reproduces the same rules for its live preview, and tests on both sides pin the expected values.
 - **Status is calculated, not stored.** "Overdue" depends on today's date, so it is derived from the due date, total and amount paid using an injectable `TimeProvider`. This makes it deterministic in tests.
-- **Ownership is enforced in queries.** Every query is scoped to the current user's `OwnerId`, and other users' invoices return `404`, not `403`, so their IDs are never revealed.
-- **Integration tests use real HTTP and a real relational database.** The API tests sign up users through the Identity endpoints and run against in-memory SQLite with the real schema.
+- **Tenant isolation is enforced in the data layer.** See [Multi-tenancy](#multi-tenancy). Other tenants' invoices return `404`, not `403`, so their IDs are never revealed.
+- **Integration tests use real HTTP and a real relational database.** The API tests sign up companies through the API and run against in-memory SQLite with the real schema. They try cross-tenant access through IDs, headers and query strings, privilege escalation, and impersonation abuse.
+
+## Multi-tenancy
+
+All companies share one database. Isolation is enforced on the server, at several layers:
+
+1. **Tenant resolution.** After authentication, `TenantResolutionMiddleware` decides which tenant the request runs in. The client can *ask* for a tenant (`X-Tenant-Id` header, or `?tenantId=` for downloads and images), but only gets it if the database confirms an active membership in an active tenant. Otherwise the request has no tenant and every tenant endpoint returns `403`. Disabled accounts and ended impersonations are signed out on their next request.
+2. **Authorization.** Tenant endpoints require a permission (`Permission:InvoicesDelete`, ...) in the resolved tenant. The platform admin area requires a separate platform-admin flag, runs with no tenant context, and is closed while impersonating.
+3. **Query filters.** Every entity implementing `ITenantEntity` (invoices, memberships, invitations, logos, and any future customers, products or payments) automatically gets an EF Core global query filter on the current tenant. A test fails if a tenant entity is ever added without one. Without a tenant, the filters match nothing.
+4. **Write guard.** `SaveChanges` stamps new tenant data with the current tenant and refuses to insert, update, delete or move data that belongs to another tenant.
+5. **Background jobs** run each tenant in its own DI scope with the tenant set explicitly (`TenantJobRunner`), so they go through the same filters. Notifications are always addressed to a specific tenant and use that tenant's sender details.
+
+Users are global accounts that join tenants through **memberships** (role and permissions per tenant), so one person can work for several companies. A tenant can only edit an account's name or reset its password when that account belongs to that tenant alone. Members can't grant permissions they don't have, only admins can manage other admins, and every company keeps at least one active admin.
+
+**Impersonation** is cookie-only, because bearer refresh tokens would re-issue the identity without the impersonation claims. Starting it records an `ImpersonationSession` (who, whom, which tenant, why), then signs the admin in as the target user with claims naming the admin and the session. Each request re-checks that session, so it ends after an hour, when stopped, or when the tenant is switched off. Platform admins can't be impersonated, and account settings and password resets are blocked while impersonating. Every audit record made in the meantime carries the admin's ID, and every changing request is also logged.
+
+**Existing data:** the `AddMultiTenancy` migration gives every existing user their own company (as its admin, on an unlimited plan) and moves their invoices into it. That keeps exactly the isolation they had before. Putting everyone into one shared default tenant would have exposed each user's invoices to all the others.
+
+**Platform admins** are bootstrapped from configuration: accounts listed in `Platform:AdminEmails` are promoted on start-up. No endpoint can grant platform admin.
 
 ## Getting started
 
@@ -83,7 +107,7 @@ flowchart LR
 docker compose up --build
 ```
 
-Open <http://localhost:8080> and click **Try the demo account** (`demo@example.com` / `Demo123!`). This starts SQL Server and the app, applies migrations and seeds sample invoices.
+Open <http://localhost:8080> and click **Try the demo account** (`demo@example.com` / `Demo123!`, admin of *Northwind Studio*). This starts SQL Server and the app, applies migrations and seeds two companies with sample invoices. Sign in as `admin@example.com` / `Admin123!` for the platform admin area, or as `owner@contoso.example` / `Demo123!` for the second company.
 
 ### Option 2: Run locally
 
@@ -113,20 +137,31 @@ npm run lint && npm run typecheck
 
 ## API overview
 
-All invoice endpoints require authentication and return [problem details](https://www.rfc-editor.org/rfc/rfc9457) on errors.
+All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) on errors. Tenant endpoints work in the active company: send `X-Tenant-Id` to choose one if the user belongs to several. Without it, the user's first available company is used.
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/api/auth/register` | Create an account |
+| `POST` | `/api/auth/signup` | Create an account and a new company |
 | `POST` | `/api/auth/login?useCookies=true` | Sign in (cookie), or omit `useCookies` to get a bearer token |
 | `POST` | `/api/auth/logout` | Sign out |
-| `GET` | `/api/auth/manage/info` | The signed-in user |
+| `GET` | `/api/me` | The signed-in user, their companies and the active one |
+| `GET` `POST` | `/api/invitations/{token}`, `/api/invitations/accept` | Preview and accept an invitation |
+| `GET` `PUT` | `/api/tenant`, `/api/tenant/settings` | Company settings |
+| `GET` `POST` `DELETE` | `/api/tenant/logo` | Company logo |
+| `GET` `POST` `PUT` `DELETE` | `/api/tenant/users/...` | Members, roles, permissions, invitations, password resets |
+| `GET` | `/api/tenant/audit-logs` | The company's activity log |
+| `GET` | `/api/reports/summary` | Financial summary per currency |
 | `GET` | `/api/invoices?search=&status=` | List invoices (summaries) |
 | `GET` | `/api/invoices/{id}` | Invoice with items and totals |
 | `POST` | `/api/invoices` | Create an invoice |
 | `PUT` | `/api/invoices/{id}` | Update an invoice |
 | `DELETE` | `/api/invoices/{id}` | Delete an invoice |
 | `GET` | `/api/invoices/export` | Download all invoices as CSV |
+| `GET` | `/api/admin/dashboard` | Platform overview (platform admins only, like everything under `/api/admin`) |
+| `GET` `POST` `PUT` `DELETE` | `/api/admin/tenants/...` | Tenants, their status, subscription, settings, users and activity |
+| `GET` `PUT` | `/api/admin/users/...` | All accounts; enable or disable one |
+| `GET` | `/api/admin/audit-logs` | Platform-wide activity |
+| `POST` | `/api/admin/impersonation`, `/api/impersonation/stop` | Start and stop impersonating a tenant user |
 | `GET` | `/health` | Health check (includes the database) |
 
 ## Project structure

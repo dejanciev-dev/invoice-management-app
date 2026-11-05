@@ -1,5 +1,6 @@
 # Runs the app with SQL Server: `docker compose up --build`, then open http://localhost:8080
-# Sign in with demo@example.com / Demo123! (seeded on first start).
+# Sign in with demo@example.com / Demo123! (a company admin) or admin@example.com / Admin123! (platform admin),
+# both seeded on first start.
 
 services:
   db:
