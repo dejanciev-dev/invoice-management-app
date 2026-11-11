@@ -1,4 +1,4 @@
-using ManagementApp.Application.Customers;
+using ManagementApp.Application.Common;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +26,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         // The list is sorted and searched by name within a company.
         builder.HasIndex(c => new { c.TenantId, c.Name });
 
-        builder.HasQueryFilter(CustomerQueries.NotDeletedFilter, c => c.DeletedAt == null);
+        builder.HasQueryFilter(QueryFilters.NotDeleted, c => c.DeletedAt == null);
     }
 }

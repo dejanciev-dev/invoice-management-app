@@ -16,6 +16,9 @@ public interface IApplicationDbContext
     /// <summary>Also hides deleted customers (see <see cref="Customer.DeletedAt"/>).</summary>
     DbSet<Customer> Customers { get; }
 
+    /// <summary>Also hides deleted products (see <see cref="Product.DeletedAt"/>).</summary>
+    DbSet<Product> Products { get; }
+
     DbSet<Tenant> Tenants { get; }
 
     DbSet<TenantMembership> TenantMemberships { get; }
