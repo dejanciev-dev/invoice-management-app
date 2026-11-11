@@ -17,6 +17,12 @@ public class Invoice : AuditableEntity, ITenantEntity
 
     public required string From { get; set; }
 
+    /// <summary>
+    /// The customer billed, when the invoice was made for a saved one. <see cref="To"/> stays the printed snapshot of
+    /// their details, so later changes to the customer do not rewrite issued invoices.
+    /// </summary>
+    public int? CustomerId { get; set; }
+
     public required string To { get; set; }
 
     public DateOnly IssueDate { get; set; }

@@ -1,3 +1,4 @@
+using ManagementApp.Application.Customers;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +8,6 @@ namespace ManagementApp.Infrastructure.Persistence.Configurations;
 
 public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
-    /// <summary>The named query filter that hides deleted customers, next to the tenant filter.</summary>
-    public const string NotDeletedFilter = "NotDeleted";
-
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
         builder.Property(c => c.Name).HasMaxLength(200).IsRequired();
@@ -28,6 +26,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         // The list is sorted and searched by name within a company.
         builder.HasIndex(c => new { c.TenantId, c.Name });
 
-        builder.HasQueryFilter(NotDeletedFilter, c => c.DeletedAt == null);
+        builder.HasQueryFilter(CustomerQueries.NotDeletedFilter, c => c.DeletedAt == null);
     }
 }
