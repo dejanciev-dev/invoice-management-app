@@ -30,6 +30,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Live preview:** the editor recalculates totals as you type, using the same half-away-from-zero rounding as the server.
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
 - **CSV export** and a **print-friendly invoice view.**
+- **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Deleting a customer only hides it, so invoice history stays intact.
 - **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
 - **Roles and permissions:** Tenant Admin, Manager, Accountant and Employee, each with default permissions that admins can adjust per user. Users join by invitation link or are created by an admin.
 - **Company settings:** profile, tax/VAT details, invoice numbering (prefix, next number, padding), default currency, payment terms and tax rate, logo, brand colour, invoice footer, email and notification preferences.
@@ -158,6 +159,8 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `PUT` | `/api/invoices/{id}` | Update an invoice |
 | `DELETE` | `/api/invoices/{id}` | Delete an invoice |
 | `GET` | `/api/invoices/export` | Download all invoices as CSV |
+| `GET` | `/api/customers?search=&page=&pageSize=` | A page of customers, by name (search matches name, email or tax number) |
+| `GET` `POST` `PUT` `DELETE` | `/api/customers/...` | Get, create, update or delete a customer (deleted customers are hidden, not removed) |
 | `GET` | `/api/admin/dashboard` | Platform overview (platform admins only, like everything under `/api/admin`) |
 | `GET` `POST` `PUT` `DELETE` | `/api/admin/tenants/...` | Tenants, their status, subscription, settings, users and activity |
 | `GET` `PUT` | `/api/admin/users/...` | All accounts; enable or disable one |
