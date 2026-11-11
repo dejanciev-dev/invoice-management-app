@@ -99,6 +99,13 @@ public class ApplicationDbContextInitialiser(
             await context.SaveChangesAsync();
         }
 
+        // Checked on its own, so demo databases created before the catalogue existed get it too.
+        if (!await context.Products.IgnoreQueryFilters().AnyAsync(p => p.TenantId == northwind.Id))
+        {
+            context.Products.AddRange(CreateDemoProducts(northwind.Id));
+            await context.SaveChangesAsync();
+        }
+
         // A second company shows that tenants are isolated and gives the platform admin someone to impersonate.
         var contosoOwner = await EnsureUserAsync(SecondDemoUserEmail, DemoUserPassword, "Contoso Owner");
         var contoso = await EnsureTenantAsync(contosoOwner, "Contoso Consulting", TenantRole.TenantAdmin, tenant =>
@@ -218,6 +225,25 @@ public class ApplicationDbContextInitialiser(
             ["tailspin"] = NewCustomer("Tailspin Toys", "8 Lakeside Avenue\nChicago, IL", "billing@tailspin.example", "US-98-7654321"),
             ["wingtip"] = NewCustomer("Wingtip Toys", "3 Harbour Lane\nBrighton, UK", "finance@wingtip.example", "GB987654321", 30)
         };
+    }
+
+    /// <summary>The demo company's catalogue: the services its demo invoices bill for.</summary>
+    private static IEnumerable<Product> CreateDemoProducts(Guid tenantId)
+    {
+        Product NewProduct(string name, decimal unitPrice, string? unit = null) =>
+            new() { TenantId = tenantId, Name = name, UnitPrice = unitPrice, Unit = unit };
+
+        return
+        [
+            NewProduct("Discovery workshop", 1200),
+            NewProduct("UI design", 85, "hour"),
+            NewProduct("React Native development", 95, "hour"),
+            NewProduct("App Store submission", 350),
+            NewProduct("Managed hosting", 149, "month"),
+            NewProduct("SSL certificate", 60, "year"),
+            NewProduct("Architecture review", 2400),
+            NewProduct("Performance audit", 120, "hour")
+        ];
     }
 
     /// <summary>The printed "Bill to" snapshot of a demo customer: its name and address.</summary>
