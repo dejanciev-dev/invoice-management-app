@@ -61,6 +61,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapTenantEndpoints();
 app.MapInvoiceEndpoints();
+app.MapCustomerEndpoints();
 app.MapAdminEndpoints();
 app.MapHealthChecks("/health");
 
