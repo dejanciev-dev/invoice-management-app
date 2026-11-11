@@ -3,12 +3,13 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form'
 import { ApiError } from '../api/client'
-import type { Customer } from '../api/types'
+import type { Customer, Product } from '../api/types'
 import { customerBillTo } from '../lib/customerForm'
 import { addDays, formatMoney } from '../lib/format'
 import { currencies, emptyItem, invoiceFormSchema, paymentTermsLabel, toFieldPath, type InvoiceFormValues } from '../lib/invoiceForm'
 import { calculateTotals } from '../lib/money'
 import { CustomerPicker } from './CustomerPicker'
+import { ProductPicker } from './ProductPicker'
 import { inputClass } from './styles'
 import { Alert, Button, Card, Field } from './ui'
 
@@ -58,6 +59,15 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
       const issueDate = getValues('issueDate')
       if (issueDate) setValue('dueDate', addDays(issueDate, termsDays), update)
     }
+  }
+
+  /** A catalogue product becomes a line; it fills the first line instead when that one is still blank. */
+  const addProduct = (product: Product) => {
+    const line = { description: product.name, quantity: 1, unitPrice: product.unitPrice }
+    const current = getValues('items')
+    const onlyLineIsBlank = current.length === 1 && !current[0]?.description.trim() && !current[0]?.unitPrice
+    if (onlyLineIsBlank) items.update(0, line)
+    else items.append(line)
   }
 
   // Show the API's validation errors (e.g. a duplicate invoice number) next to the matching fields.
@@ -153,10 +163,16 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
               )
             })}
             <FieldError message={errors.items?.root?.message ?? errors.items?.message} />
-            <Button variant="secondary" onClick={() => items.append(emptyItem)}>
-              <Plus className="size-4" aria-hidden />
-              Add item
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button variant="secondary" onClick={() => items.append(emptyItem)}>
+                <Plus className="size-4" aria-hidden />
+                Add item
+              </Button>
+              <div className="sm:w-80">
+                {/* Catalogue prices are in the company's currency. */}
+                <ProductPicker currency={companyDefaults?.currency ?? defaultValues.currency} onSelect={addProduct} />
+              </div>
+            </div>
           </div>
         </Section>
 

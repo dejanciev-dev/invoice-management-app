@@ -22,6 +22,7 @@ export function Logo({ to = '/', label = 'Invoice Manager' }: { to?: string; lab
 const tenantNav: { to: string; label: string; permission: Permission; end?: boolean }[] = [
   { to: '/', label: 'Invoices', permission: 'InvoicesView', end: true },
   { to: '/customers', label: 'Customers', permission: 'InvoicesView' },
+  { to: '/products', label: 'Products', permission: 'InvoicesView' },
   { to: '/reports', label: 'Reports', permission: 'ReportsView' },
   { to: '/users', label: 'Users', permission: 'UsersManage' },
   { to: '/activity', label: 'Activity', permission: 'AuditLogView' },

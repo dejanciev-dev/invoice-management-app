@@ -75,6 +75,20 @@ export interface Customer extends SaveCustomerRequest {
   created: string
 }
 
+export interface SaveProductRequest {
+  /** Also the description of the invoice line it is added as. */
+  name: string
+  /** What the price is per, e.g. "hour"; null for a single item. */
+  unit: string | null
+  /** In the company's default currency. */
+  unitPrice: number
+}
+
+export interface Product extends SaveProductRequest {
+  id: number
+  created: string
+}
+
 export interface CurrencyInvoiceStats {
   currency: string
   invoiceCount: number
