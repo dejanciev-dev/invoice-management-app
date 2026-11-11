@@ -1,3 +1,4 @@
+using ManagementApp.Application.Customers;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using System.Net;
@@ -28,6 +29,26 @@ internal static class TestData
         var response = await client.PostAsJsonAsync("/api/invoices", command, ApiFactory.Json, Ct);
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         return await response.ReadAsync<InvoiceDto>();
+    }
+
+    public static SaveCustomerCommand NewCustomer(string name) => new()
+    {
+        Name = name,
+        Email = "billing@example.com",
+        Address = "1 High Street\nSpringfield",
+        TaxNumber = "GB999999973",
+        Currency = "EUR",
+        PaymentTermsDays = 14
+    };
+
+    public static async Task<CustomerDto> CreateCustomerAsync(this HttpClient client, string name) =>
+        await client.CreateCustomerAsync(NewCustomer(name));
+
+    public static async Task<CustomerDto> CreateCustomerAsync(this HttpClient client, SaveCustomerCommand command)
+    {
+        var response = await client.PostAsJsonAsync("/api/customers", command, ApiFactory.Json, Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        return await response.ReadAsync<CustomerDto>();
     }
 
     public static async Task<T> GetAsync<T>(this HttpClient client, string url, Guid? tenantId = null)
