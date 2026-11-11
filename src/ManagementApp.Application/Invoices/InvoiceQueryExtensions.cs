@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using ManagementApp.Application.Common.Exceptions;
+using ManagementApp.Application.Customers;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,30 @@ internal static class InvoiceQueryExtensions
         this IQueryable<Invoice> invoices, int id, CancellationToken cancellationToken) =>
         await invoices.FirstOrDefaultAsync(i => i.Id == id, cancellationToken)
             ?? throw new NotFoundException(nameof(Invoice), id);
+
+    /// <summary>
+    /// A new customer must be a saved, not deleted, customer of this tenant. An invoice may keep the customer it already
+    /// has even if that customer was deleted since, so editing an old invoice does not force a change of customer.
+    /// </summary>
+    public static async Task EnsureCustomerCanBeUsedAsync(
+        this IQueryable<Customer> customers, int? customerId, int? currentCustomerId, CancellationToken cancellationToken)
+    {
+        if (customerId is { } id && id != currentCustomerId)
+        {
+            await customers.EnsureExistsAsync(id, nameof(SaveInvoiceCommand.CustomerId), cancellationToken);
+        }
+    }
+
+    /// <summary>The invoice's customer, including a deleted one (its name still belongs to the invoice's history).</summary>
+    public static async Task<InvoiceCustomerDto?> GetInvoiceCustomerAsync(
+        this IQueryable<Customer> customers, int? customerId, CancellationToken cancellationToken) =>
+        customerId is not { } id
+            ? null
+            : await customers.IncludingDeleted()
+                .AsNoTracking()
+                .Where(c => c.Id == id)
+                .Select(c => new InvoiceCustomerDto(c.Id, c.Name, c.DeletedAt != null))
+                .FirstOrDefaultAsync(cancellationToken);
 
     public static async Task EnsureInvoiceNumberIsUniqueAsync(
         this IQueryable<Invoice> invoices, string invoiceNumber, int? excludeId, CancellationToken cancellationToken)

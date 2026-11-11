@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices.Queries;
 
-public sealed record GetInvoicesQuery(string? Search = null, InvoiceStatus? Status = null, int Page = 1, int PageSize = 25)
+public sealed record GetInvoicesQuery(
+    string? Search = null, InvoiceStatus? Status = null, int Page = 1, int PageSize = 25, int? CustomerId = null)
 {
     public const int MaxPageSize = 100;
 }
@@ -31,6 +32,11 @@ public sealed class GetInvoicesHandler(IApplicationDbContext context, TenantCloc
         {
             var search = query.Search.Trim();
             invoices = invoices.Where(i => i.InvoiceNumber.Contains(search) || i.To.Contains(search));
+        }
+
+        if (query.CustomerId is { } customerId)
+        {
+            invoices = invoices.Where(i => i.CustomerId == customerId);
         }
 
         if (query.Status is { } status)

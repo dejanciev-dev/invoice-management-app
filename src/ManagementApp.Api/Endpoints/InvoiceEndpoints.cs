@@ -20,7 +20,7 @@ public static class InvoiceEndpoints
             .RequireAuthorization(Policies.TenantMember);
 
         group.MapGet("/", GetInvoices).RequireAuthorization(Policies.Has(Permission.InvoicesView))
-            .WithSummary("A page of the current company's invoices (search, status, page, pageSize up to 100)");
+            .WithSummary("A page of the current company's invoices (search, status, customerId, page, pageSize up to 100)");
         group.MapGet("/stats", GetInvoiceStats).RequireAuthorization(Policies.Has(Permission.InvoicesView))
             .WithSummary("Invoice counts and outstanding, overdue and billed amounts per currency");
         group.MapGet("/export", ExportInvoices).RequireAuthorization(Policies.Has(Permission.InvoicesExport))
