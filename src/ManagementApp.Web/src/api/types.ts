@@ -46,6 +46,26 @@ export interface InvoiceSummary {
   status: InvoiceStatus
 }
 
+export interface SaveCustomerRequest {
+  name: string
+  email: string | null
+  phone: string | null
+  /** The billing address, several lines. */
+  address: string | null
+  taxNumber: string | null
+  /** Null means the company's default currency. */
+  currency: string | null
+  /** Null means the company's default payment terms. */
+  paymentTermsDays: number | null
+  /** Internal, never printed on an invoice. */
+  notes: string | null
+}
+
+export interface Customer extends SaveCustomerRequest {
+  id: number
+  created: string
+}
+
 export interface CurrencyInvoiceStats {
   currency: string
   invoiceCount: number
