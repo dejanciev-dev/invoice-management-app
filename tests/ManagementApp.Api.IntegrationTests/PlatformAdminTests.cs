@@ -96,6 +96,9 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
     {
         var tenant = await factory.CreateTenantAsync(companyName: "Doomed Ltd");
         await tenant.Client.CreateInvoiceAsync("INV-001");
+        await tenant.Client.CreateCustomerAsync("Kept Customer");
+        var deletedCustomer = await tenant.Client.CreateCustomerAsync("Deleted Customer");
+        (await tenant.Client.DeleteAsync($"/api/customers/{deletedCustomer.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var (admin, _) = await factory.CreatePlatformAdminAsync();
         var url = $"/api/admin/tenants/{tenant.TenantId}";
 
@@ -142,6 +145,7 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         (await tenant.Client.GetAsync($"/api/invoices/{invoice.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await tenant.Client.PutJsonAsync($"/api/invoices/{invoice.Id}", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-002"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await tenant.Client.PostJsonAsync("/api/customers", NewCustomer("Too Late"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
