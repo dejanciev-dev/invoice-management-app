@@ -8,6 +8,7 @@ using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
 using ManagementApp.Application.Members;
 using ManagementApp.Application.Platform;
+using ManagementApp.Application.Products;
 using ManagementApp.Application.Reports;
 using ManagementApp.Application.Tenants;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +37,12 @@ public static class DependencyInjection
         services.AddScoped<CreateCustomerHandler>();
         services.AddScoped<UpdateCustomerHandler>();
         services.AddScoped<DeleteCustomerHandler>();
+
+        services.AddScoped<GetProductsHandler>();
+        services.AddScoped<GetProductHandler>();
+        services.AddScoped<CreateProductHandler>();
+        services.AddScoped<UpdateProductHandler>();
+        services.AddScoped<DeleteProductHandler>();
 
         services.AddScoped<SignupHandler>();
         services.AddScoped<GetSessionHandler>();
