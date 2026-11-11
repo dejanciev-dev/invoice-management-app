@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import type { TenantSettings } from '../api/types'
+import { fieldError } from '../lib/errors'
 import { currencies } from '../lib/invoiceForm'
 import { inputClass } from './styles'
 import { Alert, Button, Card, Field, Notice } from './ui'
@@ -171,11 +172,4 @@ function SettingsSection({ title, description, children }: { title: string; desc
       <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
     </Card>
   )
-}
-
-function fieldError(error: unknown, path: string): string | undefined {
-  if (!(error instanceof ApiError)) return undefined
-  const errors = error.problem?.errors ?? {}
-  const key = Object.keys(errors).find((k) => k.toLowerCase() === path.toLowerCase())
-  return key ? errors[key]?.[0] : undefined
 }
