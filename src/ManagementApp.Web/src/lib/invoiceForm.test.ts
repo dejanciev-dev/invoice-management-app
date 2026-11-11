@@ -1,3 +1,4 @@
+import { customerBillTo } from './customerForm'
 import { invoiceFormSchema, newInvoiceValues, toFieldPath, valuesToRequest } from './invoiceForm'
 
 describe('newInvoiceValues', () => {
@@ -69,11 +70,29 @@ describe('valuesToRequest', () => {
     expect(request.paymentTerms).toBeNull()
     expect(request.notes).toBeNull()
   })
+
+  it('sends the linked customer as its id', () => {
+    const values = newInvoiceValues('2026-01-15')
+
+    expect(valuesToRequest({ ...values, customer: { id: 7, name: 'Globex' } })).toMatchObject({ customerId: 7 })
+    expect(valuesToRequest(values).customerId).toBeNull()
+    expect(valuesToRequest(values)).not.toHaveProperty('customer')
+  })
 })
 
 describe('toFieldPath', () => {
   it('converts API error paths into form field paths', () => {
     expect(toFieldPath('items[2].unitPrice')).toBe('items.2.unitPrice')
     expect(toFieldPath('invoiceNumber')).toBe('invoiceNumber')
+    expect(toFieldPath('customerId')).toBe('customer')
+  })
+})
+
+describe('customerBillTo', () => {
+  it('lists the name, address and labelled tax number, skipping what is missing', () => {
+    expect(customerBillTo({ name: 'Globex', address: '1 Globex Way\nSpringfield', taxNumber: 'US123' }, 'VAT')).toBe(
+      'Globex\n1 Globex Way\nSpringfield\nVAT no. US123',
+    )
+    expect(customerBillTo({ name: ' Solo Trader ', address: null, taxNumber: null })).toBe('Solo Trader')
   })
 })

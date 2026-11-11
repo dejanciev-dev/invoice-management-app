@@ -16,6 +16,8 @@ export const invoiceFormSchema = z
     issueDate: z.string().min(1, 'Issue date is required'),
     dueDate: z.string(),
     paymentTerms: z.string().max(200),
+    /** The saved customer billed, or null for a one-off client described only in "Bill to". */
+    customer: z.object({ id: z.number(), name: z.string() }).nullable(),
     from: z.string().trim().min(1, 'Your business details are required').max(1000),
     to: z.string().trim().min(1, 'Client details are required').max(1000),
     items: z
@@ -61,6 +63,9 @@ export interface InvoiceDefaults {
   notes: string | null
 }
 
+/** How payment terms of a number of days are written on an invoice. */
+export const paymentTermsLabel = (days: number) => (days === 0 ? 'Due on receipt' : `Net ${days}`)
+
 export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: InvoiceDefaults): InvoiceFormValues {
   const termsDays = defaults?.paymentTermsDays ?? 30
   return {
@@ -68,7 +73,8 @@ export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: Invoi
     currency: defaults?.currency ?? 'USD',
     issueDate: today,
     dueDate: addDays(today, termsDays),
-    paymentTerms: termsDays === 0 ? 'Due on receipt' : `Net ${termsDays}`,
+    paymentTerms: paymentTermsLabel(termsDays),
+    customer: null,
     from: defaults?.from ?? '',
     to: '',
     items: [emptyItem],
@@ -88,6 +94,7 @@ export function invoiceToValues(invoice: Invoice): InvoiceFormValues {
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate ?? '',
     paymentTerms: invoice.paymentTerms ?? '',
+    customer: invoice.customer ? { id: invoice.customer.id, name: invoice.customer.name } : null,
     from: invoice.from,
     to: invoice.to,
     items: invoice.items.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice })),
@@ -102,13 +109,19 @@ export function invoiceToValues(invoice: Invoice): InvoiceFormValues {
 
 export function valuesToRequest(values: InvoiceFormValues): SaveInvoiceRequest {
   const optional = (value: string) => value.trim() || null
+  const { customer, ...rest } = values
   return {
-    ...values,
+    ...rest,
+    customerId: customer?.id ?? null,
     dueDate: values.dueDate || null,
     paymentTerms: optional(values.paymentTerms),
     notes: optional(values.notes),
   }
 }
 
-/** Converts an API error path such as "items[0].unitPrice" into a form field path ("items.0.unitPrice"). */
-export const toFieldPath = (apiPath: string) => apiPath.replace(/\[(\d+)\]/g, '.$1')
+/**
+ * Converts an API error path such as "items[0].unitPrice" into a form field path ("items.0.unitPrice"). The request's
+ * `customerId` is the form's `customer` field.
+ */
+export const toFieldPath = (apiPath: string) =>
+  apiPath.toLowerCase() === 'customerid' ? 'customer' : apiPath.replace(/\[(\d+)\]/g, '.$1')

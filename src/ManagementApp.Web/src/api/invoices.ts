@@ -7,6 +7,7 @@ export const INVOICE_PAGE_SIZE = 25
 export interface InvoiceFilters {
   search?: string
   status?: InvoiceStatus
+  customerId?: number
   page?: number
 }
 
@@ -26,7 +27,13 @@ export function useInvoices(filters: InvoiceFilters = {}) {
     queryKey: invoiceKeys.list(filters),
     queryFn: () =>
       apiRequest<Paged<InvoiceSummary>>(
-        `/invoices${query({ search: filters.search, status: filters.status, page: filters.page, pageSize: INVOICE_PAGE_SIZE })}`,
+        `/invoices${query({
+          search: filters.search,
+          status: filters.status,
+          customerId: filters.customerId,
+          page: filters.page,
+          pageSize: INVOICE_PAGE_SIZE,
+        })}`,
       ),
     placeholderData: keepPreviousData,
   })

@@ -3,11 +3,21 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { useFieldArray, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form'
 import { ApiError } from '../api/client'
-import { formatMoney } from '../lib/format'
-import { currencies, emptyItem, invoiceFormSchema, toFieldPath, type InvoiceFormValues } from '../lib/invoiceForm'
+import type { Customer } from '../api/types'
+import { customerBillTo } from '../lib/customerForm'
+import { addDays, formatMoney } from '../lib/format'
+import { currencies, emptyItem, invoiceFormSchema, paymentTermsLabel, toFieldPath, type InvoiceFormValues } from '../lib/invoiceForm'
 import { calculateTotals } from '../lib/money'
+import { CustomerPicker } from './CustomerPicker'
 import { inputClass } from './styles'
 import { Alert, Button, Card, Field } from './ui'
+
+/** What a customer without their own currency or payment terms falls back to, and how tax numbers are labelled. */
+export interface CompanyInvoiceDefaults {
+  currency: string
+  paymentTermsDays: number
+  taxLabel: string
+}
 
 interface InvoiceFormProps {
   defaultValues: InvoiceFormValues
@@ -16,17 +26,39 @@ interface InvoiceFormProps {
   submitLabel: string
   submitting?: boolean
   serverError?: unknown
+  companyDefaults?: CompanyInvoiceDefaults
 }
 
-export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, submitting, serverError }: InvoiceFormProps) {
+export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, submitting, serverError, companyDefaults }: InvoiceFormProps) {
   const {
     register,
     control,
     handleSubmit,
     setError,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<InvoiceFormValues>({ resolver: zodResolver(invoiceFormSchema), defaultValues })
   const items = useFieldArray({ control, name: 'items' })
+  const customer = useWatch({ control, name: 'customer' })
+  const currencyOptions = useCurrencyOptions(control, defaultValues.currency)
+
+  /** Choosing a customer fills in their details, currency and payment terms; everything stays editable. */
+  const selectCustomer = (chosen: Customer) => {
+    const update = { shouldDirty: true, shouldValidate: false } as const
+    setValue('customer', { id: chosen.id, name: chosen.name }, update)
+    setValue('to', customerBillTo(chosen, companyDefaults?.taxLabel), { ...update, shouldValidate: true })
+
+    const currency = chosen.currency ?? companyDefaults?.currency
+    if (currency) setValue('currency', currency, update)
+
+    const termsDays = chosen.paymentTermsDays ?? companyDefaults?.paymentTermsDays
+    if (termsDays !== undefined) {
+      setValue('paymentTerms', paymentTermsLabel(termsDays), update)
+      const issueDate = getValues('issueDate')
+      if (issueDate) setValue('dueDate', addDays(issueDate, termsDays), update)
+    }
+  }
 
   // Show the API's validation errors (e.g. a duplicate invoice number) next to the matching fields.
   const unmappedErrors = useServerErrors(serverError, setError)
@@ -51,7 +83,7 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
             </Field>
             <Field label="Currency" htmlFor="currency" error={errors.currency?.message}>
               <select id="currency" {...register('currency')} className={inputClass}>
-                {(currencies.some((c) => c === defaultValues.currency) ? [...currencies] : [defaultValues.currency, ...currencies]).map((code) => (
+                {currencyOptions.map((code) => (
                   <option key={code}>{code}</option>
                 ))}
               </select>
@@ -69,6 +101,15 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
         </Section>
 
         <Section title="Parties">
+          <Field
+            label="Customer"
+            htmlFor="customer"
+            error={errors.customer?.message}
+            hint={customer ? 'Bill to was filled in from this customer; edits apply to this invoice only.' : 'Optional. Choose a saved customer to fill in their details.'}
+            className="mb-4"
+          >
+            <CustomerPicker value={customer} onSelect={selectCustomer} onClear={() => setValue('customer', null, { shouldDirty: true })} />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="From" htmlFor="from" error={errors.from?.message}>
               <textarea id="from" rows={4} {...register('from')} aria-invalid={!!errors.from} placeholder={'Your business\nStreet address\nCity, Country'} className={inputClass} />
@@ -168,6 +209,16 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
       </aside>
     </form>
   )
+}
+
+/** The usual currencies, plus the invoice's own and the one picked from a customer if they are not among them. */
+function useCurrencyOptions(control: Control<InvoiceFormValues>, initial: string): string[] {
+  const current = useWatch({ control, name: 'currency' })
+  const options: string[] = [...currencies]
+  for (const code of [current, initial]) {
+    if (code && !options.includes(code)) options.unshift(code)
+  }
+  return options
 }
 
 function useServerErrors(error: unknown, setError: ReturnType<typeof useForm<InvoiceFormValues>>['setError']): string[] {
