@@ -91,7 +91,11 @@ public class ApplicationDbContextInitialiser(
 
         if (!await context.Invoices.IgnoreQueryFilters().AnyAsync(i => i.TenantId == northwind.Id))
         {
-            context.Invoices.AddRange(CreateDemoInvoices(northwind.Id, demoUser.Id));
+            var customers = CreateDemoCustomers(northwind.Id);
+            context.Customers.AddRange(customers.Values);
+            await context.SaveChangesAsync(); // the invoices need the customers' ids
+
+            context.Invoices.AddRange(CreateDemoInvoices(northwind.Id, demoUser.Id, customers));
             await context.SaveChangesAsync();
         }
 
@@ -108,13 +112,25 @@ public class ApplicationDbContextInitialiser(
 
         if (!await context.Invoices.IgnoreQueryFilters().AnyAsync(i => i.TenantId == contoso.Id))
         {
+            var litware = new Customer
+            {
+                TenantId = contoso.Id,
+                Name = "Litware Inc.",
+                Address = "77 Pine Street\nPortland, OR",
+                Email = "ap@litware.example",
+                PaymentTermsDays = 30
+            };
+            context.Customers.Add(litware);
+            await context.SaveChangesAsync();
+
             var invoice = new Invoice
             {
                 TenantId = contoso.Id,
                 OwnerId = contosoOwner.Id,
                 InvoiceNumber = "INV-0001",
                 From = contoso.InvoiceSenderDetails(),
-                To = "Litware Inc.\n77 Pine Street\nPortland, OR",
+                CustomerId = litware.Id,
+                To = BillTo(litware),
                 IssueDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(-10),
                 DueDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(20),
                 PaymentTerms = "Net 30",
@@ -180,25 +196,54 @@ public class ApplicationDbContextInitialiser(
         return tenant;
     }
 
-    private IEnumerable<Invoice> CreateDemoInvoices(Guid tenantId, string ownerId)
+    /// <summary>The demo company's customers by a short key. The last one has no invoices yet.</summary>
+    private static Dictionary<string, Customer> CreateDemoCustomers(Guid tenantId)
+    {
+        Customer NewCustomer(string name, string address, string? email = null, string? taxNumber = null, int? termsDays = null) => new()
+        {
+            TenantId = tenantId,
+            Name = name,
+            Address = address,
+            Email = email,
+            TaxNumber = taxNumber,
+            PaymentTermsDays = termsDays,
+            Currency = "USD"
+        };
+
+        return new()
+        {
+            ["contoso"] = NewCustomer("Contoso Ltd", "1 Microsoft Way\nRedmond, WA", "accounts@contoso.example"),
+            ["fabrikam"] = NewCustomer("Fabrikam Inc.", "500 Market Street\nSan Francisco, CA", "ap@fabrikam.example", termsDays: 14),
+            ["adventure"] = NewCustomer("Adventure Works", "12 Mountain Road\nDenver, CO"),
+            ["tailspin"] = NewCustomer("Tailspin Toys", "8 Lakeside Avenue\nChicago, IL", "billing@tailspin.example", "US-98-7654321"),
+            ["wingtip"] = NewCustomer("Wingtip Toys", "3 Harbour Lane\nBrighton, UK", "finance@wingtip.example", "GB987654321", 30)
+        };
+    }
+
+    /// <summary>The printed "Bill to" snapshot of a demo customer: its name and address.</summary>
+    private static string BillTo(Customer customer) =>
+        string.Join('\n', new[] { customer.Name, customer.Address }.Where(line => !string.IsNullOrWhiteSpace(line)));
+
+    private IEnumerable<Invoice> CreateDemoInvoices(Guid tenantId, string ownerId, IReadOnlyDictionary<string, Customer> customers)
     {
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         const string from = "Northwind Studio\n42 Harbour Street\nLondon, UK";
 
-        Invoice NewInvoice(string number, string to, int issuedDaysAgo, int dueInDays) => new()
+        Invoice NewInvoice(string number, string customerKey, int issuedDaysAgo, int dueInDays) => new()
         {
             TenantId = tenantId,
             OwnerId = ownerId,
             InvoiceNumber = number,
             From = from,
-            To = to,
+            CustomerId = customers[customerKey].Id,
+            To = BillTo(customers[customerKey]),
             IssueDate = today.AddDays(-issuedDaysAgo),
             DueDate = today.AddDays(-issuedDaysAgo + dueInDays),
             PaymentTerms = $"Net {dueInDays}",
             Currency = "USD"
         };
 
-        var websiteRedesign = NewInvoice("INV-2026-001", "Contoso Ltd\n1 Microsoft Way\nRedmond, WA", 75, 30);
+        var websiteRedesign = NewInvoice("INV-2026-001", "contoso", 75, 30);
         websiteRedesign.ReplaceItems(
         [
             new InvoiceItem { Description = "Discovery workshop", Quantity = 1, UnitPrice = 1200 },
@@ -208,7 +253,7 @@ public class ApplicationDbContextInitialiser(
         websiteRedesign.TaxType = TaxType.Percentage;
         websiteRedesign.AmountPaid = websiteRedesign.Total;
 
-        var mobileApp = NewInvoice("INV-2026-002", "Fabrikam Inc.\n500 Market Street\nSan Francisco, CA", 45, 14);
+        var mobileApp = NewInvoice("INV-2026-002", "fabrikam", 45, 14);
         mobileApp.ReplaceItems(
         [
             new InvoiceItem { Description = "React Native development (hours)", Quantity = 60, UnitPrice = 95 },
@@ -217,7 +262,7 @@ public class ApplicationDbContextInitialiser(
         mobileApp.Discount = 10;
         mobileApp.DiscountType = DiscountType.Percentage;
 
-        var hosting = NewInvoice("INV-2026-003", "Adventure Works\n12 Mountain Road\nDenver, CO", 20, 30);
+        var hosting = NewInvoice("INV-2026-003", "adventure", 20, 30);
         hosting.ReplaceItems(
         [
             new InvoiceItem { Description = "Managed hosting (months)", Quantity = 3, UnitPrice = 149 },
@@ -225,7 +270,7 @@ public class ApplicationDbContextInitialiser(
         ]);
         hosting.AmountPaid = 200;
 
-        var consulting = NewInvoice("INV-2026-004", "Tailspin Toys\n8 Lakeside Avenue\nChicago, IL", 3, 30);
+        var consulting = NewInvoice("INV-2026-004", "tailspin", 3, 30);
         consulting.ReplaceItems(
         [
             new InvoiceItem { Description = "Architecture review", Quantity = 1, UnitPrice = 2400 },
