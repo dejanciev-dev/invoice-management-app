@@ -23,7 +23,11 @@ public sealed record InvoiceDto(
     decimal TaxAmount,
     decimal Total,
     decimal BalanceDue,
-    InvoiceStatus Status);
+    InvoiceStatus Status,
+    InvoiceCustomerDto? Customer);
+
+/// <summary>The saved customer an invoice was made for. <c>IsDeleted</c> customers are still shown, but not linked to.</summary>
+public sealed record InvoiceCustomerDto(int Id, string Name, bool IsDeleted);
 
 public sealed record InvoiceSummaryDto(
     int Id,

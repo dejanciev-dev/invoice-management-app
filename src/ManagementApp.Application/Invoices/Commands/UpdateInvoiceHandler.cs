@@ -21,6 +21,7 @@ public sealed class UpdateInvoiceHandler(
         var invoice = await context.Invoices.GetAsync(id, cancellationToken);
         await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
         await context.Invoices.EnsureInvoiceNumberIsUniqueAsync(command.InvoiceNumber, excludeId: id, cancellationToken);
+        await context.Customers.EnsureCustomerCanBeUsedAsync(command.CustomerId, invoice.CustomerId, cancellationToken);
 
         var previousTotal = invoice.Total;
         var previousAmountPaid = invoice.AmountPaid;
@@ -45,6 +46,8 @@ public sealed class UpdateInvoiceHandler(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return invoice.ToDto(await tenantClock.TodayAsync(cancellationToken));
+        return invoice.ToDto(
+            await tenantClock.TodayAsync(cancellationToken),
+            await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
     }
 }

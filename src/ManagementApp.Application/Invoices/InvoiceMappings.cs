@@ -4,7 +4,7 @@ namespace ManagementApp.Application.Invoices;
 
 public static class InvoiceMappings
 {
-    public static InvoiceDto ToDto(this Invoice invoice, DateOnly today) => new(
+    public static InvoiceDto ToDto(this Invoice invoice, DateOnly today, InvoiceCustomerDto? customer) => new(
         invoice.Id,
         invoice.InvoiceNumber,
         invoice.From,
@@ -25,7 +25,8 @@ public static class InvoiceMappings
         invoice.TaxAmount,
         invoice.Total,
         invoice.BalanceDue,
-        invoice.GetStatus(today));
+        invoice.GetStatus(today),
+        customer);
 
     public static InvoiceSummaryDto ToSummaryDto(this Invoice invoice, DateOnly today) => new(
         invoice.Id,
