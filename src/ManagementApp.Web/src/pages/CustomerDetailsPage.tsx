@@ -4,10 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
 import { useCustomer, useDeleteCustomer } from '../api/customers'
+import { useInvoices } from '../api/invoices'
 import { useCurrentTenant } from '../api/tenant'
 import type { Customer } from '../api/types'
-import { Alert, Button, ButtonLink, Card, Spinner } from '../components/ui'
+import { StatusBadge } from '../components/StatusBadge'
+import { Alert, Button, ButtonLink, Card, EmptyRow, Pager, Spinner, tableClass, tdClass, thClass, theadClass } from '../components/ui'
 import { errorText } from '../lib/errors'
+import { formatDate, formatMoney } from '../lib/format'
 import { NotFoundPage } from './NotFoundPage'
 
 export function CustomerDetailsPage() {
@@ -41,7 +44,67 @@ function CustomerDetails({ id }: { id: number }) {
         </Card>
         <InvoicingDefaults customer={customer} />
       </div>
+      <CustomerInvoices customerId={customer.id} />
     </>
+  )
+}
+
+/** The invoices made for this customer, newest first, a page at a time. */
+function CustomerInvoices({ customerId }: { customerId: number }) {
+  const [page, setPage] = useState(1)
+  const invoices = useInvoices({ customerId, page })
+
+  return (
+    <Card className="mt-6 overflow-hidden">
+      <h2 className="border-b border-line px-6 py-4 text-base font-semibold">Invoices</h2>
+      {invoices.isPending ? (
+        <Spinner label="Loading invoices" />
+      ) : invoices.isError ? (
+        <div className="p-4">
+          <Alert>Could not load this customer's invoices.</Alert>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className={tableClass}>
+              <thead className={theadClass}>
+                <tr>
+                  <th scope="col" className={thClass}>Invoice</th>
+                  <th scope="col" className={`${thClass} hidden sm:table-cell`}>Issued</th>
+                  <th scope="col" className={`${thClass} text-right`}>Total</th>
+                  <th scope="col" className={`${thClass} hidden text-right sm:table-cell`}>Balance</th>
+                  <th scope="col" className={thClass}>Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {invoices.data.items.length === 0 ? (
+                  <EmptyRow colSpan={5}>No invoices for this customer yet.</EmptyRow>
+                ) : (
+                  invoices.data.items.map((invoice) => (
+                    <tr key={invoice.id}>
+                      <td className={`${tdClass} font-medium whitespace-nowrap`}>
+                        <Link to={`/invoices/${invoice.id}`} className="hover:text-brand">
+                          {invoice.invoiceNumber}
+                        </Link>
+                      </td>
+                      <td className={`${tdClass} hidden whitespace-nowrap text-muted sm:table-cell`}>{formatDate(invoice.issueDate)}</td>
+                      <td className={`${tdClass} text-right whitespace-nowrap tabular-nums`}>{formatMoney(invoice.total, invoice.currency)}</td>
+                      <td className={`${tdClass} hidden text-right whitespace-nowrap tabular-nums sm:table-cell`}>
+                        {formatMoney(invoice.balanceDue, invoice.currency)}
+                      </td>
+                      <td className={`${tdClass} whitespace-nowrap`}>
+                        <StatusBadge status={invoice.status} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pager page={invoices.data.page} pageSize={invoices.data.pageSize} total={invoices.data.total} onChange={setPage} />
+        </>
+      )}
+    </Card>
   )
 }
 

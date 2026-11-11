@@ -32,6 +32,15 @@ export interface Invoice {
   total: number
   balanceDue: number
   status: InvoiceStatus
+  /** The saved customer the invoice was made for, if any; `to` is the printed snapshot of their details. */
+  customer: InvoiceCustomer | null
+}
+
+export interface InvoiceCustomer {
+  id: number
+  name: string
+  /** Deleted customers are still named on their invoices, but have no page to link to. */
+  isDeleted: boolean
 }
 
 export interface InvoiceSummary {
@@ -85,6 +94,7 @@ export interface InvoiceStats {
 
 export interface SaveInvoiceRequest {
   invoiceNumber: string
+  customerId: number | null
   from: string
   to: string
   issueDate: string

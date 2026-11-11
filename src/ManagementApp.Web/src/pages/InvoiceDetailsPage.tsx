@@ -30,6 +30,18 @@ function InvoiceDetails({ id }: { id: number }) {
   return (
     <>
       <Toolbar invoice={invoice} />
+      {invoice.customer && (
+        <p className="-mt-3 mb-4 text-sm text-muted print:hidden">
+          Customer:{' '}
+          {invoice.customer.isDeleted ? (
+            <span className="font-medium text-ink">{invoice.customer.name} (deleted)</span>
+          ) : (
+            <Link to={`/customers/${invoice.customer.id}`} className="font-medium text-ink hover:text-brand">
+              {invoice.customer.name}
+            </Link>
+          )}
+        </p>
+      )}
       <InvoiceDocument invoice={invoice} tenant={tenant} />
     </>
   )

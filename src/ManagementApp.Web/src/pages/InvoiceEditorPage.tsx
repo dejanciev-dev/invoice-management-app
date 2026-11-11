@@ -50,7 +50,13 @@ function EditExisting({ id }: { id: number }) {
 function Editor({ id, defaultValues }: { id?: number; defaultValues: InvoiceFormValues }) {
   const navigate = useNavigate()
   const save = useSaveInvoice(id)
+  const { data: tenant } = useCurrentTenant()
   const isNew = id === undefined
+  const companyDefaults = tenant && {
+    currency: tenant.settings.profile.defaultCurrency,
+    paymentTermsDays: tenant.settings.invoice.defaultPaymentTermsDays,
+    taxLabel: tenant.settings.invoice.taxLabel,
+  }
 
   const submit = (values: InvoiceFormValues) =>
     save.mutate(valuesToRequest(values), {
@@ -70,6 +76,7 @@ function Editor({ id, defaultValues }: { id?: number; defaultValues: InvoiceForm
         submitLabel={isNew ? 'Create invoice' : 'Save changes'}
         submitting={save.isPending}
         serverError={save.error}
+        companyDefaults={companyDefaults || undefined}
       />
     </>
   )

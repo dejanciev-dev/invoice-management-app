@@ -7,6 +7,7 @@ export const CUSTOMER_PAGE_SIZE = 25
 export interface CustomerFilters {
   search?: string
   page?: number
+  pageSize?: number
 }
 
 export const customerKeys = {
@@ -16,12 +17,15 @@ export const customerKeys = {
 }
 
 /** One page of customers sorted by name; searching (name, email, tax number) and paging happen on the server. */
-export function useCustomers(filters: CustomerFilters = {}) {
+export function useCustomers(filters: CustomerFilters = {}, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: customerKeys.list(filters),
     queryFn: () =>
-      apiRequest<Paged<Customer>>(`/customers${query({ search: filters.search, page: filters.page, pageSize: CUSTOMER_PAGE_SIZE })}`),
+      apiRequest<Paged<Customer>>(
+        `/customers${query({ search: filters.search, page: filters.page, pageSize: filters.pageSize ?? CUSTOMER_PAGE_SIZE })}`,
+      ),
     placeholderData: keepPreviousData,
+    enabled,
   })
 }
 
