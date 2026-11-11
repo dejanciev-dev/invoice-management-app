@@ -1,6 +1,7 @@
 using ManagementApp.Application.Customers;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
+using ManagementApp.Application.Products;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -49,6 +50,16 @@ internal static class TestData
         var response = await client.PostAsJsonAsync("/api/customers", command, ApiFactory.Json, Ct);
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         return await response.ReadAsync<CustomerDto>();
+    }
+
+    public static SaveProductCommand NewProduct(string name, decimal unitPrice = 95m, string? unit = "hour") =>
+        new() { Name = name, UnitPrice = unitPrice, Unit = unit };
+
+    public static async Task<ProductDto> CreateProductAsync(this HttpClient client, string name, decimal unitPrice = 95m)
+    {
+        var response = await client.PostAsJsonAsync("/api/products", NewProduct(name, unitPrice), ApiFactory.Json, Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        return await response.ReadAsync<ProductDto>();
     }
 
     public static async Task<T> GetAsync<T>(this HttpClient client, string url, Guid? tenantId = null)

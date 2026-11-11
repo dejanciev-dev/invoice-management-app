@@ -99,6 +99,9 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         await tenant.Client.CreateCustomerAsync("Kept Customer");
         var deletedCustomer = await tenant.Client.CreateCustomerAsync("Deleted Customer");
         (await tenant.Client.DeleteAsync($"/api/customers/{deletedCustomer.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        await tenant.Client.CreateProductAsync("Kept Product");
+        var deletedProduct = await tenant.Client.CreateProductAsync("Deleted Product");
+        (await tenant.Client.DeleteAsync($"/api/products/{deletedProduct.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var (admin, _) = await factory.CreatePlatformAdminAsync();
         var url = $"/api/admin/tenants/{tenant.TenantId}";
 
@@ -146,6 +149,7 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         (await tenant.Client.PutJsonAsync($"/api/invoices/{invoice.Id}", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-002"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.PostJsonAsync("/api/customers", NewCustomer("Too Late"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await tenant.Client.PostJsonAsync("/api/products", NewProduct("Too Late"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
