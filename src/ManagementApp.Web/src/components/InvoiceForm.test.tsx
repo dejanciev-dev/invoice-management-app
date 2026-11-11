@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '../api/client'
-import type { Customer, Paged } from '../api/types'
+import type { Customer, Paged, Product } from '../api/types'
 import { newInvoiceValues } from '../lib/invoiceForm'
 import { InvoiceForm } from './InvoiceForm'
 
@@ -36,9 +36,9 @@ const globex: Customer = {
   created: '2026-01-01T00:00:00Z',
 }
 
-/** Answers the customer search with the given customers. */
-function stubCustomerSearch(customers: Customer[]) {
-  const page: Paged<Customer> = { items: customers, total: customers.length, page: 1, pageSize: 8 }
+/** Answers every search (customers or products) with the given items. */
+function stubSearch<T>(items: T[]) {
+  const page: Paged<T> = { items, total: items.length, page: 1, pageSize: 8 }
   const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(page), { headers: { 'Content-Type': 'application/json' } }))
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -108,7 +108,7 @@ describe('InvoiceForm', () => {
   })
 
   it("fills in a chosen customer's details, currency and payment terms", async () => {
-    const fetchMock = stubCustomerSearch([globex])
+    const fetchMock = stubSearch([globex])
     const { user, onSubmit } = renderForm({ companyDefaults: { currency: 'USD', paymentTermsDays: 30, taxLabel: 'VAT' } })
 
     await user.type(screen.getByRole('combobox', { name: 'Customer' }), 'glo')
@@ -128,7 +128,7 @@ describe('InvoiceForm', () => {
   })
 
   it("uses the company's defaults for a customer without their own, and can unlink the customer", async () => {
-    stubCustomerSearch([{ ...globex, currency: null, paymentTermsDays: null }])
+    stubSearch([{ ...globex, currency: null, paymentTermsDays: null }])
     const { user } = renderForm({ companyDefaults: { currency: 'GBP', paymentTermsDays: 0, taxLabel: 'VAT' } })
 
     await user.click(screen.getByRole('combobox', { name: 'Customer' }))
@@ -141,6 +141,26 @@ describe('InvoiceForm', () => {
     await user.click(screen.getByRole('button', { name: 'Remove customer' }))
     expect(screen.getByRole('combobox', { name: 'Customer' })).toBeInTheDocument()
     expect(screen.getByLabelText('Bill to')).toHaveValue('Globex\n1 Globex Way\nSpringfield\nVAT no. US123') // the text stays
+  })
+
+  it('adds catalogue products as lines, filling the blank first line first', async () => {
+    const consulting: Product = { id: 1, name: 'Consulting', unit: 'hour', unitPrice: 95, created: '2026-01-01T00:00:00Z' }
+    const hosting: Product = { id: 2, name: 'Hosting', unit: null, unitPrice: 149, created: '2026-01-01T00:00:00Z' }
+    const fetchMock = stubSearch([consulting, hosting])
+    const { user } = renderForm({ companyDefaults: { currency: 'USD', paymentTermsDays: 30, taxLabel: 'Tax' } })
+
+    await user.type(screen.getByRole('combobox', { name: 'Add from catalogue' }), 'c')
+    expect(await screen.findByRole('option', { name: /Consulting.*\$95\.00 \/ hour/ })).toBeInTheDocument()
+    expect(String(fetchMock.mock.lastCall?.[0])).toContain('/api/products?search=c')
+    await user.click(screen.getByRole('option', { name: /Consulting/ }))
+    await user.click(screen.getByRole('combobox', { name: 'Add from catalogue' }))
+    await user.click(await screen.findByRole('option', { name: /Hosting/ }))
+
+    expect(screen.getByLabelText('Item 1 description')).toHaveValue('Consulting')
+    expect(screen.getByLabelText('Item 1 unit price')).toHaveValue(95)
+    expect(screen.getByLabelText('Item 2 description')).toHaveValue('Hosting')
+    expect(screen.getByLabelText('Item 2 quantity')).toHaveValue(1)
+    expect(totals().getAllByText('$244.00')).toHaveLength(3) // subtotal, total and balance due (no tax or discount)
   })
 
   it('shows server validation errors next to the matching fields', () => {

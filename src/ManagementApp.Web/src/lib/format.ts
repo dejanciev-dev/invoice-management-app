@@ -37,3 +37,9 @@ export function formatTotalsByCurrency(entries: { amount: number; currency: stri
   if (totals.size === 0) return formatMoney(0, 'USD')
   return [...totals].map(([currency, amount]) => formatMoney(amount, currency)).join(' + ')
 }
+
+/** A catalogue price: "€95.00 / hour", or just the price for something without a unit. */
+export function formatUnitPrice(product: { unitPrice: number; unit: string | null }, currency: string): string {
+  const price = formatMoney(product.unitPrice, currency)
+  return product.unit ? `${price} / ${product.unit}` : price
+}
