@@ -653,7 +653,7 @@ Suggested labels: `phase:2`…`phase:7`, `area:backend`, `area:frontend`, `area:
 - [x] Tenant time zone for "today" and overdue status `area:backend` `P0`
 - [x] Customer entity, CRUD API and pages `area:backend` `area:frontend` `P0`
 - [x] Migrate existing invoice "To" text into customers `area:db` `P0`
-- [ ] Product & service catalogue `P0`
+- [x] Product & service catalogue `P0`
 - [ ] Invoice lifecycle (Draft/Issued/Void) with domain state machine `P0`
 - [ ] Gap-free numbering assigned on issue (sequence table) `area:db` `P0`
 - [ ] Credit notes `P1`

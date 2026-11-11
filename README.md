@@ -31,6 +31,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
 - **CSV export** and a **print-friendly invoice view.**
 - **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Picking a customer in the invoice editor fills in "Bill to", currency, terms and due date; the invoice keeps its own copy of those details. Each customer's page lists their invoices. Deleting a customer only hides it, so invoice history stays intact. Existing invoices were linked to customers created from their "Bill to" text when upgrading.
+- **Products & services catalogue:** name, unit (hour, month, ...) and usual price. "Add from catalogue" in the invoice editor adds one as a line; the invoice keeps its own copy, so changing or deleting a product never alters existing invoices.
 - **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
 - **Roles and permissions:** Tenant Admin, Manager, Accountant and Employee, each with default permissions that admins can adjust per user. Users join by invitation link or are created by an admin.
 - **Company settings:** profile, tax/VAT details, invoice numbering (prefix, next number, padding), default currency, payment terms and tax rate, logo, brand colour, invoice footer, email and notification preferences.
@@ -161,6 +162,8 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` | `/api/invoices/export` | Download all invoices as CSV |
 | `GET` | `/api/customers?search=&page=&pageSize=` | A page of customers, by name (search matches name, email or tax number) |
 | `GET` `POST` `PUT` `DELETE` | `/api/customers/...` | Get, create, update or delete a customer (deleted customers are hidden, not removed) |
+| `GET` | `/api/products?search=&page=&pageSize=` | A page of the catalogue, by name |
+| `GET` `POST` `PUT` `DELETE` | `/api/products/...` | Get, create, update or delete a product or service (deleted products are hidden, not removed) |
 | `GET` | `/api/admin/dashboard` | Platform overview (platform admins only, like everything under `/api/admin`) |
 | `GET` `POST` `PUT` `DELETE` | `/api/admin/tenants/...` | Tenants, their status, subscription, settings, users and activity |
 | `GET` `PUT` | `/api/admin/users/...` | All accounts; enable or disable one |
