@@ -34,6 +34,10 @@ public static class AuditActions
     public const string InvoicePaymentChanged = "invoice.payment_changed";
     public const string InvoicesExported = "invoice.exported";
 
+    public const string CustomerCreated = "customer.created";
+    public const string CustomerUpdated = "customer.updated";
+    public const string CustomerDeleted = "customer.deleted";
+
     public const string ImpersonationStarted = "impersonation.started";
     public const string ImpersonationEnded = "impersonation.ended";
     public const string ImpersonatedRequest = "impersonation.request";
