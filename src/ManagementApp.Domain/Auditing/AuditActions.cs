@@ -38,6 +38,10 @@ public static class AuditActions
     public const string CustomerUpdated = "customer.updated";
     public const string CustomerDeleted = "customer.deleted";
 
+    public const string ProductCreated = "product.created";
+    public const string ProductUpdated = "product.updated";
+    public const string ProductDeleted = "product.deleted";
+
     public const string ImpersonationStarted = "impersonation.started";
     public const string ImpersonationEnded = "impersonation.ended";
     public const string ImpersonatedRequest = "impersonation.request";
