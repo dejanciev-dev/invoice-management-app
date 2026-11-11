@@ -30,7 +30,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Live preview:** the editor recalculates totals as you type, using the same half-away-from-zero rounding as the server.
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
 - **CSV export** and a **print-friendly invoice view.**
-- **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Deleting a customer only hides it, so invoice history stays intact.
+- **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Picking a customer in the invoice editor fills in "Bill to", currency, terms and due date; the invoice keeps its own copy of those details. Each customer's page lists their invoices. Deleting a customer only hides it, so invoice history stays intact. Existing invoices were linked to customers created from their "Bill to" text when upgrading.
 - **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
 - **Roles and permissions:** Tenant Admin, Manager, Accountant and Employee, each with default permissions that admins can adjust per user. Users join by invitation link or are created by an admin.
 - **Company settings:** profile, tax/VAT details, invoice numbering (prefix, next number, padding), default currency, payment terms and tax rate, logo, brand colour, invoice footer, email and notification preferences.
@@ -152,7 +152,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` `POST` `PUT` `DELETE` | `/api/tenant/users/...` | Members, roles, permissions, invitations, password resets |
 | `GET` | `/api/tenant/audit-logs` | The company's activity log |
 | `GET` | `/api/reports/summary` | Financial summary per currency |
-| `GET` | `/api/invoices?search=&status=&page=&pageSize=` | A page of invoice summaries (filtered and paged in SQL, up to 100 per page) |
+| `GET` | `/api/invoices?search=&status=&customerId=&page=&pageSize=` | A page of invoice summaries (filtered and paged in SQL, up to 100 per page) |
 | `GET` | `/api/invoices/stats` | Invoice counts and outstanding, overdue and billed amounts per currency |
 | `GET` | `/api/invoices/{id}` | Invoice with items and totals |
 | `POST` | `/api/invoices` | Create an invoice |
