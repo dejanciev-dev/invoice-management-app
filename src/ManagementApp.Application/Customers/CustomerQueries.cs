@@ -1,5 +1,6 @@
 using FluentValidation;
 using FluentValidation.Results;
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Exceptions;
 using ManagementApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,9 @@ namespace ManagementApp.Application.Customers;
 /// </remarks>
 public static class CustomerQueries
 {
-    /// <summary>The named query filter that hides deleted customers, next to the tenant filter.</summary>
-    public const string NotDeletedFilter = "NotDeleted";
-
     /// <summary>Includes deleted customers, still only the current tenant's (the tenant filter stays on).</summary>
     public static IQueryable<Customer> IncludingDeleted(this IQueryable<Customer> customers) =>
-        customers.IgnoreQueryFilters([NotDeletedFilter]);
+        customers.IgnoreQueryFilters([QueryFilters.NotDeleted]);
 
     internal static async Task<Customer> GetAsync(this IQueryable<Customer> customers, int id, CancellationToken cancellationToken) =>
         await customers.FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
