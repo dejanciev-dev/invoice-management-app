@@ -205,6 +205,9 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .HasColumnType("nchar(3)")
                         .IsFixedLength();
 
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Discount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -277,6 +280,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomerId");
+
                     b.HasIndex("OwnerId");
 
                     b.HasIndex("TenantId", "DueDate");
@@ -285,6 +290,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("TenantId", "IssueDate");
+
+                    b.HasIndex("TenantId", "CustomerId", "IssueDate");
 
                     b.ToTable("Invoices");
                 });
@@ -766,6 +773,11 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ManagementApp.Domain.Entities.Invoice", b =>
                 {
+                    b.HasOne("ManagementApp.Domain.Entities.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ManagementApp.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")

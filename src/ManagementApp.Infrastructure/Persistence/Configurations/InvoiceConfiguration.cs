@@ -39,10 +39,17 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(i => i.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Customers are only soft deleted, so they never disappear from under an invoice.
+        builder.HasOne<Customer>()
+            .WithMany()
+            .HasForeignKey(i => i.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Numbers are unique per company; the index also serves every tenant-filtered invoice query.
         builder.HasIndex(i => new { i.TenantId, i.InvoiceNumber }).IsUnique();
         builder.HasIndex(i => new { i.TenantId, i.IssueDate });
         builder.HasIndex(i => new { i.TenantId, i.DueDate }); // overdue filters and statistics
+        builder.HasIndex(i => new { i.TenantId, i.CustomerId, i.IssueDate }); // a customer's invoices
         builder.HasIndex(i => i.OwnerId);
 
         builder.HasMany(i => i.Items)

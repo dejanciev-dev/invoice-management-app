@@ -1,5 +1,4 @@
 using FluentValidation;
-using ManagementApp.Application.Common.Exceptions;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Application.Tenants;
@@ -129,15 +128,4 @@ public sealed class DeleteCustomerHandler(
 
         await context.SaveChangesAsync(cancellationToken);
     }
-}
-
-/// <remarks>
-/// The query filters scope customers to the current tenant and hide deleted ones, so a customer of another tenant, or a
-/// deleted one, is reported as not found. That does not reveal whether it exists.
-/// </remarks>
-internal static class CustomerQueryExtensions
-{
-    public static async Task<Customer> GetAsync(this IQueryable<Customer> customers, int id, CancellationToken cancellationToken) =>
-        await customers.FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Customer), id);
 }
