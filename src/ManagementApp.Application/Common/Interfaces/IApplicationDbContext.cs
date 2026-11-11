@@ -13,6 +13,9 @@ public interface IApplicationDbContext
 {
     DbSet<Invoice> Invoices { get; }
 
+    /// <summary>Also hides deleted customers (see <see cref="Customer.DeletedAt"/>).</summary>
+    DbSet<Customer> Customers { get; }
+
     DbSet<Tenant> Tenants { get; }
 
     DbSet<TenantMembership> TenantMemberships { get; }
