@@ -182,6 +182,17 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     }
 
     [Fact]
+    public async Task MalformedJson_IsABadRequest_NotAServerError()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsync("/api/invoices",
+            new StringContent("{\"currency\":,}", System.Text.Encoding.UTF8, "application/json"), CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task UnknownApiRoutes_ReturnNotFoundInsteadOfTheWebApp()
     {
         var response = await factory.CreateClient().GetAsync("/api/does-not-exist", CancellationToken);
