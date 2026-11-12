@@ -1,7 +1,7 @@
 export type AdjustmentType = 'Flat' | 'Percentage'
 
 /** Drafts and void invoices show their state; issued invoices show their payment progress. */
-export type InvoiceStatus = 'Draft' | 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Void'
+export type InvoiceStatus = 'Draft' | 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Credited' | 'Void'
 
 /** Drafts can be edited and deleted; issued invoices are final and can only be voided. */
 export type InvoiceState = 'Draft' | 'Issued' | 'Void'
@@ -15,6 +15,23 @@ export interface RecordPaymentRequest {
   method: PaymentMethod
   reference: string | null
   notes: string | null
+}
+
+export interface IssueCreditNoteRequest {
+  /** Including tax; at most the balance due. */
+  amount: number
+  date: string
+  reason: string
+}
+
+export interface CreditNote {
+  id: number
+  number: string
+  date: string
+  reason: string
+  amount: number
+  taxAmount: number
+  netAmount: number
 }
 
 export interface Payment extends RecordPaymentRequest {
@@ -62,6 +79,9 @@ export interface Invoice {
   customer: InvoiceCustomer | null
   /** Money received, oldest first; `amountPaid` is their sum. */
   payments: Payment[]
+  /** The sum of `creditNotes`; already taken off `balanceDue`. */
+  creditedAmount: number
+  creditNotes: CreditNote[]
 }
 
 export interface InvoiceCustomer {
@@ -234,6 +254,7 @@ export interface TenantSettings {
   profile: TenantProfile
   invoice: {
     numberPrefix: string
+    creditNotePrefix: string
     nextNumber: number
     numberPadding: number
     defaultPaymentTermsDays: number

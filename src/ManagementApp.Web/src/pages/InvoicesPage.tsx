@@ -10,7 +10,7 @@ import { statusLabels } from '../lib/status'
 import { Alert, ButtonLink, Card, PageHeader, Pager, Spinner } from '../components/ui'
 import { firstLine, formatDate, formatMoney, formatTotalsByCurrency, invoiceTitle } from '../lib/format'
 
-const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Draft', 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid', 'Void']
+const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Draft', 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid', 'Credited', 'Void']
 
 export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()

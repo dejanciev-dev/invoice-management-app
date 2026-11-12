@@ -7,6 +7,7 @@ const styles: Record<InvoiceStatus, string> = {
   PartiallyPaid: 'bg-amber-500/10 text-amber-800 ring-amber-500/25 dark:text-amber-300',
   Paid: 'bg-emerald-500/10 text-emerald-800 ring-emerald-500/25 dark:text-emerald-300',
   Overdue: 'bg-red-500/10 text-red-700 ring-red-500/25 dark:text-red-300',
+  Credited: 'bg-violet-500/10 text-violet-800 ring-violet-500/25 dark:text-violet-300',
   Void: 'bg-transparent text-muted ring-line line-through',
 }
 

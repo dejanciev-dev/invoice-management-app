@@ -6,5 +6,6 @@ export const statusLabels: Record<InvoiceStatus, string> = {
   PartiallyPaid: 'Partially paid',
   Paid: 'Paid',
   Overdue: 'Overdue',
+  Credited: 'Credited',
   Void: 'Void',
 }
