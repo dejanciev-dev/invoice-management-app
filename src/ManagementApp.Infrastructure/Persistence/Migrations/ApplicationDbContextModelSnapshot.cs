@@ -233,6 +233,9 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("IssueDate")
                         .HasColumnType("date");
 
+                    b.Property<DateTimeOffset?>("IssuedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset?>("LastModified")
                         .HasColumnType("datetimeoffset");
 
@@ -250,6 +253,11 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.Property<string>("PaymentTerms")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal>("StoredBalanceDue")
                         .HasPrecision(18, 2)
@@ -278,13 +286,18 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("OwnerId");
-
-                    b.HasIndex("TenantId", "DueDate");
 
                     b.HasIndex("TenantId", "InvoiceNumber")
                         .IsUnique();
@@ -292,6 +305,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "IssueDate");
 
                     b.HasIndex("TenantId", "CustomerId", "IssueDate");
+
+                    b.HasIndex("TenantId", "State", "DueDate");
 
                     b.ToTable("Invoices");
                 });

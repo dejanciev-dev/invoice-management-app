@@ -54,17 +54,23 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task TheSqlStatusFilter_AgreesWithTheDomainForEveryCombination()
     {
-        // Every combination of paid / part-paid / unpaid / overpaid with no, past, today's and future due dates.
+        // Every combination of draft / issued / void, paid / part-paid / unpaid / overpaid, and no, past, today's and
+        // future due dates.
+        InvoiceState[] states = [InvoiceState.Draft, InvoiceState.Issued, InvoiceState.Void];
         DateOnly?[] dueDates = [null, Today.AddDays(-1), Today, Today.AddDays(1)];
         decimal[] payments = [0m, 40m, 100m, 120m];
         var n = 0;
-        foreach (var dueDate in dueDates)
+        foreach (var state in states)
         {
-            foreach (var paid in payments)
+            foreach (var dueDate in dueDates)
             {
-                var invoice = NewInvoice($"INV-{++n:000}", amountPaid: paid, discount: 0, tax: 0, Item(1, 100m));
-                invoice.DueDate = dueDate;
-                Context.Invoices.Add(invoice);
+                foreach (var paid in payments)
+                {
+                    var invoice = NewInvoice($"INV-{++n:000}", amountPaid: paid, discount: 0, tax: 0, Item(1, 100m));
+                    invoice.DueDate = dueDate;
+                    MoveTo(invoice, state);
+                    Context.Invoices.Add(invoice);
+                }
             }
         }
 
@@ -78,6 +84,39 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
             var fromDomain = all.Where(i => i.GetStatus(Today) == status).Select(i => i.Id).ToList();
 
             fromSql.ShouldBe(fromDomain, ignoreOrder: true, customMessage: $"status {status}");
+        }
+    }
+
+    [Fact]
+    public async Task TheLifecycle_IsStoredAndReadBack()
+    {
+        var invoice = NewInvoice("INV-001", amountPaid: 0, discount: 0, tax: 0, Item(1, 100m));
+        var issuedAt = new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
+        invoice.Issue(issuedAt);
+        invoice.Void(issuedAt.AddDays(2), "Duplicate");
+        Context.Invoices.Add(invoice);
+        await Context.SaveChangesAsync(CancellationToken);
+
+        await using var readContext = CreateContext();
+        var stored = await readContext.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoice.Id, CancellationToken);
+
+        stored.State.ShouldBe(InvoiceState.Void);
+        stored.IssuedAt.ShouldBe(issuedAt);
+        stored.VoidedAt.ShouldBe(issuedAt.AddDays(2));
+        stored.VoidReason.ShouldBe("Duplicate");
+    }
+
+    private static void MoveTo(Invoice invoice, InvoiceState state)
+    {
+        var now = new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
+        if (state != InvoiceState.Draft)
+        {
+            invoice.Issue(now);
+        }
+
+        if (state == InvoiceState.Void)
+        {
+            invoice.Void(now, "Test");
         }
     }
 

@@ -144,6 +144,7 @@ public class ApplicationDbContextInitialiser(
                 Currency = "USD"
             };
             invoice.ReplaceItems([new InvoiceItem { Description = "Strategy workshop", Quantity = 2, UnitPrice = 1500 }]);
+            invoice.Issue(IssuedOn(invoice.IssueDate));
             context.Invoices.Add(invoice);
             contoso.InvoiceSettings.NextNumber = 2;
             await context.SaveChangesAsync();
@@ -246,6 +247,10 @@ public class ApplicationDbContextInitialiser(
         ];
     }
 
+    /// <summary>When a demo invoice was issued: the morning of its issue date.</summary>
+    private static DateTimeOffset IssuedOn(DateOnly issueDate) =>
+        new(issueDate.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero);
+
     /// <summary>The printed "Bill to" snapshot of a demo customer: its name and address.</summary>
     private static string BillTo(Customer customer) =>
         string.Join('\n', new[] { customer.Name, customer.Address }.Where(line => !string.IsNullOrWhiteSpace(line)));
@@ -307,6 +312,12 @@ public class ApplicationDbContextInitialiser(
         consulting.Tax = 8.25m;
         consulting.TaxType = TaxType.Percentage;
         consulting.Notes = "Thank you for your business!";
+
+        // The newest invoice is left as a draft, so the demo shows both editable drafts and final, issued invoices.
+        foreach (var issued in new[] { websiteRedesign, mobileApp, hosting })
+        {
+            issued.Issue(IssuedOn(issued.IssueDate));
+        }
 
         return [websiteRedesign, mobileApp, hosting, consulting];
     }
