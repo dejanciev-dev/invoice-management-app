@@ -107,7 +107,7 @@ public sealed class GetTenantDetailsHandler(IApplicationDbContext context, TimeP
             tenant.StatusChangedAt,
             tenant.Created,
             tenant.HasLogo,
-            tenant.ToSettingsDto(),
+            tenant.ToSettingsDto(await context.GetNextInvoiceNumberAsync(tenant.Id, cancellationToken)),
             tenant.Subscription.ToDto(now),
             stats);
     }
@@ -275,6 +275,7 @@ public sealed class DeleteTenantHandler(IApplicationDbContext context, IAuditLog
             // Ignoring the filters includes the customers that were already (soft) deleted.
             var customers = await context.Customers.IgnoreQueryFilters().Where(c => c.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             var products = await context.Products.IgnoreQueryFilters().Where(p => p.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+            await context.InvoiceNumberSequences.IgnoreQueryFilters().Where(s => s.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantMemberships.IgnoreQueryFilters().Where(m => m.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantInvitations.IgnoreQueryFilters().Where(i => i.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantLogos.IgnoreQueryFilters().Where(l => l.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);

@@ -24,8 +24,8 @@ public sealed class InvoiceListTests(ApiFactory factory) : IClassFixture<ApiFact
         var tooBig = await company.Client.GetAsync<PagedResult<InvoiceSummaryDto>>("/api/invoices?pageSize=5000");
 
         first.Total.ShouldBe(5);
-        first.Items.Select(i => i.InvoiceNumber).ShouldBe(["INV-005", "INV-004"]);
-        last.Items.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-001");
+        first.Items.Select(i => i.To).ShouldBe(["INV-005", "INV-004"]);
+        last.Items.ShouldHaveSingleItem().To.ShouldBe("INV-001");
         tooBig.PageSize.ShouldBe(GetInvoicesQuery.MaxPageSize);
     }
 

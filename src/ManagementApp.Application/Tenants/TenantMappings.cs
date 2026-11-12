@@ -4,7 +4,8 @@ namespace ManagementApp.Application.Tenants;
 
 public static class TenantMappings
 {
-    public static TenantSettingsDto ToSettingsDto(this Tenant tenant) => new()
+    /// <param name="nextInvoiceNumber">From the tenant's <see cref="Invoices.InvoiceNumbering">number sequence</see>.</param>
+    public static TenantSettingsDto ToSettingsDto(this Tenant tenant, int nextInvoiceNumber) => new()
     {
         Profile = new TenantProfileDto
         {
@@ -22,7 +23,7 @@ public static class TenantMappings
         Invoice = new InvoiceSettingsDto
         {
             NumberPrefix = tenant.InvoiceSettings.NumberPrefix,
-            NextNumber = tenant.InvoiceSettings.NextNumber,
+            NextNumber = nextInvoiceNumber,
             NumberPadding = tenant.InvoiceSettings.NumberPadding,
             DefaultPaymentTermsDays = tenant.InvoiceSettings.DefaultPaymentTermsDays,
             DefaultTaxRate = tenant.InvoiceSettings.DefaultTaxRate,
@@ -66,7 +67,6 @@ public static class TenantMappings
 
         var invoice = tenant.InvoiceSettings;
         invoice.NumberPrefix = settings.Invoice.NumberPrefix.Trim();
-        invoice.NextNumber = settings.Invoice.NextNumber;
         invoice.NumberPadding = settings.Invoice.NumberPadding;
         invoice.DefaultPaymentTermsDays = settings.Invoice.DefaultPaymentTermsDays;
         invoice.DefaultTaxRate = settings.Invoice.DefaultTaxRate;
@@ -100,13 +100,13 @@ public static class TenantMappings
     public static PlanDto ToDto(this SubscriptionPlan plan) => new(
         plan.Code, plan.Name, plan.MaxUsers, plan.MaxInvoicesPerMonth, Split(plan.Features), plan.MonthlyPrice, plan.YearlyPrice);
 
-    public static CurrentTenantDto ToCurrentTenantDto(this Tenant tenant, DateTimeOffset now) => new(
+    public static CurrentTenantDto ToCurrentTenantDto(this Tenant tenant, DateTimeOffset now, int nextInvoiceNumber) => new(
         tenant.Id,
         tenant.Status,
         tenant.HasLogo,
-        tenant.InvoiceSettings.SuggestedNextNumber,
+        tenant.InvoiceSettings.FormatNumber(nextInvoiceNumber),
         tenant.InvoiceSenderDetails(),
-        tenant.ToSettingsDto(),
+        tenant.ToSettingsDto(nextInvoiceNumber),
         tenant.Subscription.ToDto(now));
 
     private static IReadOnlyList<PlanFeature> Split(PlanFeature features) =>

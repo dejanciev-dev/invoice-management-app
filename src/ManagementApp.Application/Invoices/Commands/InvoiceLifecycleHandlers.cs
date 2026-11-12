@@ -3,7 +3,9 @@ using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Domain.Auditing;
+using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices.Commands;
 
@@ -11,8 +13,13 @@ namespace ManagementApp.Application.Invoices.Commands;
 /// The invoice state transitions. The rules themselves live on <see cref="Invoice"/>; these handlers load the invoice,
 /// apply one transition, audit it and save. A transition the invoice's state does not allow is reported as a conflict.
 /// </summary>
+/// <summary>
+/// Issues a draft under the next number of the company's sequence. Taking the number and saving the invoice happen in
+/// one transaction, so a failure leaves neither an issued invoice nor a skipped number behind.
+/// </summary>
 public sealed class IssueInvoiceHandler(
     IApplicationDbContext context,
+    ITenantContext tenantContext,
     SubscriptionGuard subscriptionGuard,
     IAuditLogger auditLogger,
     TimeProvider timeProvider,
@@ -20,19 +27,33 @@ public sealed class IssueInvoiceHandler(
 {
     public async Task<InvoiceDto> HandleAsync(int id, CancellationToken cancellationToken)
     {
+        var tenantId = tenantContext.RequireTenantId();
         var invoice = await context.Invoices.GetAsync(id, cancellationToken);
         await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
+        var tenant = await context.Tenants.AsNoTracking().SingleAsync(t => t.Id == tenantId, cancellationToken);
 
-        invoice.Issue(timeProvider.GetUtcNow());
-
-        auditLogger.Add(new AuditEntry(AuditActions.InvoiceIssued)
+        await context.ExecuteInTransactionAsync(async () =>
         {
-            EntityType = nameof(Invoice),
-            EntityId = invoice.Id.ToString(),
-            Details = new { invoice.InvoiceNumber, invoice.CustomerId, invoice.Currency, invoice.Total }
-        });
+            // Anything that throws from here on (an invoice that is not a draft, a number already in use) rolls the
+            // transaction back, and with it the number just taken.
+            var number = tenant.InvoiceSettings.FormatNumber(await context.TakeNextInvoiceNumberAsync(tenantId, cancellationToken));
+            if (await context.Invoices.AnyAsync(i => i.InvoiceNumber == number, cancellationToken))
+            {
+                throw new DomainRuleException(
+                    $"Invoice number {number} is already used. Set a higher next invoice number in the company settings.");
+            }
 
-        await context.SaveChangesAsync(cancellationToken);
+            invoice.Issue(timeProvider.GetUtcNow(), number);
+            auditLogger.Add(new AuditEntry(AuditActions.InvoiceIssued)
+            {
+                EntityType = nameof(Invoice),
+                EntityId = invoice.Id.ToString(),
+                Details = new { invoice.InvoiceNumber, invoice.CustomerId, invoice.Currency, invoice.Total }
+            });
+
+            await context.SaveChangesAsync(cancellationToken);
+        }, cancellationToken);
+
         return await invoice.ToDtoAsync(context, tenantClock, cancellationToken);
     }
 }
