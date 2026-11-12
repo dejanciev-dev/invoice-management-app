@@ -31,6 +31,8 @@ public static class AuditActions
     public const string InvoiceCreated = "invoice.created";
     public const string InvoiceUpdated = "invoice.updated";
     public const string InvoiceDeleted = "invoice.deleted";
+    public const string InvoiceIssued = "invoice.issued";
+    public const string InvoiceVoided = "invoice.voided";
     public const string InvoicePaymentChanged = "invoice.payment_changed";
     public const string InvoicesExported = "invoice.exported";
 

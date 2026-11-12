@@ -1,3 +1,4 @@
+using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Enums;
 
@@ -6,6 +7,7 @@ namespace ManagementApp.Domain.UnitTests.Entities;
 public class InvoiceTests
 {
     private static readonly DateOnly Today = new(2026, 10, 26);
+    private static readonly DateTimeOffset Now = new(2026, 10, 26, 9, 30, 0, TimeSpan.Zero);
 
     [Fact]
     public void Subtotal_IsSumOfItemAmounts()
@@ -81,13 +83,92 @@ public class InvoiceTests
     [InlineData(0, -1, InvoiceStatus.Overdue)]
     [InlineData(400, -1, InvoiceStatus.Overdue)]
     [InlineData(0, 0, InvoiceStatus.Unpaid)]
-    public void GetStatus_ReflectsPaymentsAndDueDate(decimal amountPaid, int? dueInDays, InvoiceStatus expected)
+    public void GetStatus_OfAnIssuedInvoice_ReflectsPaymentsAndDueDate(decimal amountPaid, int? dueInDays, InvoiceStatus expected)
     {
         var invoice = CreateInvoice(Item(1, 1000m));
-        invoice.AmountPaid = amountPaid;
         invoice.DueDate = dueInDays is { } days ? Today.AddDays(days) : null;
+        invoice.Issue(Now);
+        invoice.RecordAmountPaid(amountPaid);
 
         invoice.GetStatus(Today).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void ANewInvoice_IsAnEditableDraft_WhateverItsPaymentsAndDueDate()
+    {
+        var invoice = CreateInvoice(Item(1, 1000m));
+        invoice.DueDate = Today.AddDays(-30);
+        invoice.AmountPaid = 400;
+
+        invoice.State.ShouldBe(InvoiceState.Draft);
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Draft);
+        Should.NotThrow(invoice.EnsureEditable);
+        Should.NotThrow(invoice.EnsureDeletable);
+    }
+
+    [Fact]
+    public void Issue_MakesTheInvoiceFinal()
+    {
+        var invoice = CreateInvoice(Item(1, 1000m));
+
+        invoice.Issue(Now);
+
+        invoice.State.ShouldBe(InvoiceState.Issued);
+        invoice.IssuedAt.ShouldBe(Now);
+        Should.Throw<DomainRuleException>(invoice.EnsureEditable).Message.ShouldContain("Only drafts can be changed");
+        Should.Throw<DomainRuleException>(invoice.EnsureDeletable).Message.ShouldContain("Void it instead");
+        Should.Throw<DomainRuleException>(() => invoice.Issue(Now)).Message.ShouldContain("already issued");
+    }
+
+    [Fact]
+    public void Issue_RequiresAtLeastOneItem()
+    {
+        var invoice = CreateInvoice();
+
+        Should.Throw<DomainRuleException>(() => invoice.Issue(Now));
+        invoice.State.ShouldBe(InvoiceState.Draft);
+    }
+
+    [Fact]
+    public void Void_ClosesAnIssuedInvoiceForGood()
+    {
+        var invoice = CreateInvoice(Item(1, 1000m));
+        invoice.Issue(Now);
+
+        invoice.Void(Now.AddDays(1), "  Billed to the wrong customer ");
+
+        invoice.State.ShouldBe(InvoiceState.Void);
+        invoice.VoidedAt.ShouldBe(Now.AddDays(1));
+        invoice.VoidReason.ShouldBe("Billed to the wrong customer");
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Void);
+        Should.Throw<DomainRuleException>(() => invoice.Void(Now, "again")).Message.ShouldContain("already void");
+        Should.Throw<DomainRuleException>(() => invoice.RecordAmountPaid(10));
+        Should.Throw<DomainRuleException>(invoice.EnsureEditable);
+        Should.Throw<DomainRuleException>(invoice.EnsureDeletable);
+    }
+
+    [Fact]
+    public void Void_IsNotForDrafts_AndNeedsAReason()
+    {
+        var draft = CreateInvoice(Item(1, 1000m));
+        Should.Throw<DomainRuleException>(() => draft.Void(Now, "Mistake")).Message.ShouldContain("Delete it instead");
+
+        draft.Issue(Now);
+        Should.Throw<DomainRuleException>(() => draft.Void(Now, " "));
+        draft.State.ShouldBe(InvoiceState.Issued);
+    }
+
+    [Fact]
+    public void RecordAmountPaid_IsOnlyForIssuedInvoices()
+    {
+        var invoice = CreateInvoice(Item(1, 1000m));
+        Should.Throw<DomainRuleException>(() => invoice.RecordAmountPaid(100));
+
+        invoice.Issue(Now);
+        invoice.RecordAmountPaid(1000);
+
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Paid);
+        Should.Throw<ArgumentOutOfRangeException>(() => invoice.RecordAmountPaid(-1));
     }
 
     [Fact]
