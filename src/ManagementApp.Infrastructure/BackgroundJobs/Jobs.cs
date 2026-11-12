@@ -1,7 +1,6 @@
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Domain.Auditing;
-using ManagementApp.Domain.Enums;
 using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -28,10 +27,10 @@ public sealed class OverdueInvoiceReminderJob(TenantJobRunner runner, TimeProvid
 
             // The tenant query filter limits this to the tenant set by the runner.
             var today = tenant.LocalDate(timeProvider.GetUtcNow());
-            var overdue = (await context.Invoices.AsNoTracking().ToListAsync(ct))
-                .Where(i => i.GetStatus(today) == InvoiceStatus.Overdue)
+            var overdue = await context.Invoices.AsNoTracking()
+                .WhereOverdue(today)
                 .OrderBy(i => i.DueDate)
-                .ToList();
+                .ToListAsync(ct);
             if (overdue.Count == 0)
             {
                 return;
