@@ -60,6 +60,7 @@ public sealed class GetInvoicesHandler(IApplicationDbContext context, TenantCloc
                 i.Currency,
                 i.State,
                 i.AmountPaid,
+                i.CreditedAmount,
                 Total = EF.Property<decimal>(i, InvoiceTotalsQueries.StoredTotal),
                 BalanceDue = EF.Property<decimal>(i, InvoiceTotalsQueries.StoredBalanceDue)
             })
@@ -74,7 +75,7 @@ public sealed class GetInvoicesHandler(IApplicationDbContext context, TenantCloc
             r.Currency,
             r.Total,
             r.BalanceDue,
-            Invoice.StatusFor(r.State, r.BalanceDue, r.AmountPaid, r.DueDate, today))).ToList();
+            Invoice.StatusFor(r.State, r.BalanceDue, r.AmountPaid, r.CreditedAmount, r.DueDate, today))).ToList();
 
         return new PagedResult<InvoiceSummaryDto>(items, total, page, pageSize);
     }

@@ -19,6 +19,7 @@ public static class InvoiceMappings
         invoice.Tax,
         invoice.TaxType,
         invoice.AmountPaid,
+        invoice.CreditedAmount,
         invoice.Items.Select(ToDto).ToList(),
         invoice.Subtotal,
         invoice.DiscountAmount,
@@ -31,7 +32,8 @@ public static class InvoiceMappings
         invoice.VoidedAt,
         invoice.VoidReason,
         customer,
-        invoice.Payments.OrderBy(p => p.Date).ThenBy(p => p.Id).Select(ToDto).ToList());
+        invoice.Payments.OrderBy(p => p.Date).ThenBy(p => p.Id).Select(ToDto).ToList(),
+        invoice.CreditNotes.OrderBy(c => c.Id).Select(ToDto).ToList());
 
     public static InvoiceSummaryDto ToSummaryDto(this Invoice invoice, DateOnly today) => new(
         invoice.Id,
@@ -47,6 +49,9 @@ public static class InvoiceMappings
     public static PaymentDto ToDto(this Payment payment) =>
         new(payment.Id, payment.Amount, payment.Date, payment.Method, payment.Reference, payment.Notes, payment.Created);
 
+    public static CreditNoteDto ToDto(this CreditNote creditNote) => new(
+        creditNote.Id, creditNote.Number, creditNote.Date, creditNote.Reason, creditNote.Amount, creditNote.TaxAmount, creditNote.NetAmount);
+
     public static InvoiceItemDto ToDto(this InvoiceItem item) =>
         new(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount);
 
@@ -61,6 +66,7 @@ public static class InvoiceMappings
         invoice.TaxAmount,
         invoice.Total,
         invoice.AmountPaid,
+        invoice.CreditedAmount,
         invoice.BalanceDue,
         invoice.GetStatus(today));
 }

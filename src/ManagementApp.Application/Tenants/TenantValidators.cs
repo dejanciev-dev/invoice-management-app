@@ -33,6 +33,11 @@ public sealed class TenantSettingsValidator : AbstractValidator<TenantSettingsDt
         RuleFor(v => v.Profile).NotNull().SetValidator(new TenantProfileValidator());
 
         RuleFor(v => v.Invoice.NumberPrefix).MaximumLength(20).OverridePropertyName("invoice.numberPrefix");
+        RuleFor(v => v.Invoice.CreditNotePrefix).NotEmpty().MaximumLength(20).OverridePropertyName("invoice.creditNotePrefix");
+        RuleFor(v => v.Invoice.CreditNotePrefix)
+            .Must((v, prefix) => !string.Equals(prefix?.Trim(), v.Invoice.NumberPrefix?.Trim(), StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Credit notes need a different prefix from invoices.")
+            .OverridePropertyName("invoice.creditNotePrefix");
         RuleFor(v => v.Invoice.NextNumber).InclusiveBetween(1, 999_999_999).OverridePropertyName("invoice.nextNumber");
         RuleFor(v => v.Invoice.NumberPadding).InclusiveBetween(1, 10).OverridePropertyName("invoice.numberPadding");
         RuleFor(v => v.Invoice.DefaultPaymentTermsDays).InclusiveBetween(0, 365).OverridePropertyName("invoice.defaultPaymentTermsDays");

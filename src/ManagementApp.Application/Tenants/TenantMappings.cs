@@ -23,6 +23,7 @@ public static class TenantMappings
         Invoice = new InvoiceSettingsDto
         {
             NumberPrefix = tenant.InvoiceSettings.NumberPrefix,
+            CreditNotePrefix = tenant.InvoiceSettings.CreditNotePrefix,
             NextNumber = nextInvoiceNumber,
             NumberPadding = tenant.InvoiceSettings.NumberPadding,
             DefaultPaymentTermsDays = tenant.InvoiceSettings.DefaultPaymentTermsDays,
@@ -67,6 +68,7 @@ public static class TenantMappings
 
         var invoice = tenant.InvoiceSettings;
         invoice.NumberPrefix = settings.Invoice.NumberPrefix.Trim();
+        invoice.CreditNotePrefix = settings.Invoice.CreditNotePrefix.Trim();
         invoice.NumberPadding = settings.Invoice.NumberPadding;
         invoice.DefaultPaymentTermsDays = settings.Invoice.DefaultPaymentTermsDays;
         invoice.DefaultTaxRate = settings.Invoice.DefaultTaxRate;

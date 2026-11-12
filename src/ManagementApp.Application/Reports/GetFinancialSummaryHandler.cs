@@ -30,7 +30,7 @@ public static class InvoiceStatistics
             .Select(g => new CurrencyTotalsDto(
                 g.Key,
                 g.Count(),
-                g.Sum(i => i.Total),
+                g.Sum(i => i.Total - i.CreditedAmount), // billed net of credit notes
                 g.Sum(i => Math.Min(i.AmountPaid, i.Total)),
                 g.Sum(i => Math.Max(i.BalanceDue, 0)),
                 g.Where(i => i.GetStatus(today) == InvoiceStatus.Overdue).Sum(i => i.BalanceDue)))
@@ -56,7 +56,7 @@ public sealed class GetFinancialSummaryHandler(
         var monthly = invoices
             .Where(i => i.State == InvoiceState.Issued && i.IssueDate >= firstMonth)
             .GroupBy(i => (Month: $"{i.IssueDate:yyyy-MM}", i.Currency))
-            .Select(g => new MonthlyTotalDto(g.Key.Month, g.Key.Currency, g.Sum(i => i.Total), g.Sum(i => Math.Min(i.AmountPaid, i.Total))))
+            .Select(g => new MonthlyTotalDto(g.Key.Month, g.Key.Currency, g.Sum(i => i.Total - i.CreditedAmount), g.Sum(i => Math.Min(i.AmountPaid, i.Total))))
             .OrderBy(m => m.Month)
             .ThenBy(m => m.Currency)
             .ToList();

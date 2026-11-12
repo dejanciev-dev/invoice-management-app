@@ -62,6 +62,27 @@ public static class InvoiceNumbering
         return next - 1;
     }
 
+    /// <summary>
+    /// Takes the next credit note number, with the same guarantees as <see cref="TakeNextInvoiceNumberAsync"/>: it must
+    /// run inside the transaction that saves the credit note.
+    /// </summary>
+    public static async Task<int> TakeNextCreditNoteNumberAsync(
+        this IApplicationDbContext context, Guid tenantId, CancellationToken cancellationToken)
+    {
+        var updated = await Sequence(context, tenantId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.NextCreditNoteNumber, x => x.NextCreditNoteNumber + 1), cancellationToken);
+
+        if (updated == 0)
+        {
+            context.InvoiceNumberSequences.Add(new InvoiceNumberSequence { TenantId = tenantId, NextCreditNoteNumber = 2 });
+            await context.SaveChangesAsync(cancellationToken);
+            return 1;
+        }
+
+        var next = await Sequence(context, tenantId).AsNoTracking().Select(s => s.NextCreditNoteNumber).SingleAsync(cancellationToken);
+        return next - 1;
+    }
+
     private static IQueryable<InvoiceNumberSequence> Sequence(IApplicationDbContext context, Guid tenantId) =>
         context.InvoiceNumberSequences.IgnoreQueryFilters().Where(s => s.TenantId == tenantId);
 }

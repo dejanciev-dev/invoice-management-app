@@ -19,14 +19,18 @@ public static class InvoiceTotalsQueries
 
     /// <summary>
     /// Filters by status in SQL. Mirrors <see cref="Invoice.GetStatus"/> exactly: drafts and void invoices by their
-    /// state; issued invoices are paid when nothing is due, otherwise overdue when past the due date, otherwise
+    /// state; issued invoices with nothing due are credited when only credit notes cleared them and paid otherwise;
+    /// with something due they are overdue when past the due date, otherwise
     /// partially paid when something was paid, otherwise unpaid.
     /// </summary>
     public static IQueryable<Invoice> WhereStatus(this IQueryable<Invoice> invoices, InvoiceStatus status, DateOnly today) => status switch
     {
         InvoiceStatus.Draft => invoices.Where(i => i.State == InvoiceState.Draft),
         InvoiceStatus.Void => invoices.Where(i => i.State == InvoiceState.Void),
-        InvoiceStatus.Paid => invoices.WhereIssued().Where(i => EF.Property<decimal>(i, StoredBalanceDue) <= 0),
+        InvoiceStatus.Paid => invoices.WhereIssued().Where(i =>
+            EF.Property<decimal>(i, StoredBalanceDue) <= 0 && !(i.AmountPaid <= 0 && i.CreditedAmount > 0)),
+        InvoiceStatus.Credited => invoices.WhereIssued().Where(i =>
+            EF.Property<decimal>(i, StoredBalanceDue) <= 0 && i.AmountPaid <= 0 && i.CreditedAmount > 0),
         InvoiceStatus.Overdue => invoices.WhereOverdue(today),
         InvoiceStatus.PartiallyPaid => invoices.WhereIssued().Where(i =>
             EF.Property<decimal>(i, StoredBalanceDue) > 0 && (i.DueDate == null || i.DueDate >= today) && i.AmountPaid > 0),
