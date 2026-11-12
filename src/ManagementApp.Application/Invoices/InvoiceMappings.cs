@@ -30,7 +30,8 @@ public static class InvoiceMappings
         invoice.IssuedAt,
         invoice.VoidedAt,
         invoice.VoidReason,
-        customer);
+        customer,
+        invoice.Payments.OrderBy(p => p.Date).ThenBy(p => p.Id).Select(ToDto).ToList());
 
     public static InvoiceSummaryDto ToSummaryDto(this Invoice invoice, DateOnly today) => new(
         invoice.Id,
@@ -42,6 +43,9 @@ public static class InvoiceMappings
         invoice.Total,
         invoice.BalanceDue,
         invoice.GetStatus(today));
+
+    public static PaymentDto ToDto(this Payment payment) =>
+        new(payment.Id, payment.Amount, payment.Date, payment.Method, payment.Reference, payment.Notes, payment.Created);
 
     public static InvoiceItemDto ToDto(this InvoiceItem item) =>
         new(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount);

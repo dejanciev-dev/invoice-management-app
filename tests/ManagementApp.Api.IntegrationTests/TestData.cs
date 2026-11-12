@@ -2,6 +2,7 @@ using ManagementApp.Application.Customers;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Products;
+using ManagementApp.Domain.Enums;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -45,6 +46,21 @@ internal static class TestData
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         return await response.ReadAsync<InvoiceDto>();
     }
+
+    public static RecordPaymentCommand NewPayment(decimal amount) =>
+        new() { Amount = amount, Date = ApiFactory.Today, Method = PaymentMethod.BankTransfer, Reference = "REF-1" };
+
+    /// <summary>Records a payment received today on an issued invoice and returns the updated invoice.</summary>
+    public static async Task<InvoiceDto> RecordPaymentAsync(this HttpClient client, int invoiceId, decimal amount)
+    {
+        var response = await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/payments", NewPayment(amount), ApiFactory.Json, Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return await response.ReadAsync<InvoiceDto>();
+    }
+
+    /// <summary>Creates and issues an invoice, then records <paramref name="amountPaid"/> on it.</summary>
+    public static async Task<InvoiceDto> CreatePaidInvoiceAsync(this HttpClient client, SaveInvoiceCommand command, decimal amountPaid) =>
+        await client.RecordPaymentAsync((await client.CreateIssuedInvoiceAsync(command)).Id, amountPaid);
 
     public static SaveCustomerCommand NewCustomer(string name) => new()
     {

@@ -103,11 +103,10 @@ public class SaveInvoiceCommandValidatorTests
     [Fact]
     public void RejectsNegativeAmounts()
     {
-        var result = _validator.TestValidate(ValidCommand with { Discount = -1, Tax = -1, AmountPaid = -1 });
+        var result = _validator.TestValidate(ValidCommand with { Discount = -1, Tax = -1 });
 
         result.ShouldHaveValidationErrorFor(c => c.Discount);
         result.ShouldHaveValidationErrorFor(c => c.Tax);
-        result.ShouldHaveValidationErrorFor(c => c.AmountPaid);
     }
 
     [Fact]

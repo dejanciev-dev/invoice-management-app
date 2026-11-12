@@ -169,7 +169,7 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
     public async Task Admins_CanSeeTenantStatistics()
     {
         var tenant = await factory.CreateTenantAsync();
-        await tenant.Client.CreateIssuedInvoiceAsync(NewInvoice("INV-001") with { AmountPaid = 100 });
+        await tenant.Client.CreatePaidInvoiceAsync(NewInvoice("INV-001"), 100);
         await tenant.Client.CreateIssuedInvoiceAsync(NewInvoice("INV-002") with { Currency = "USD" });
         var (admin, _) = await factory.CreatePlatformAdminAsync();
 

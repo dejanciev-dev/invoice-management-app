@@ -61,10 +61,10 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
         var company = await factory.CreateTenantAsync();
         var invoice = await company.Client.CreateInvoiceAsync("INV-001"); // total 301.00
 
-        var onDraft = await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}/amount-paid", new RecordAmountPaidCommand(100));
+        var onDraft = await company.Client.PostJsonAsync($"/api/invoices/{invoice.Id}/payments", NewPayment(100));
         await company.Client.IssueInvoiceAsync(invoice.Id);
-        var partly = await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}/amount-paid", new RecordAmountPaidCommand(100));
-        var negative = await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}/amount-paid", new RecordAmountPaidCommand(-1));
+        var partly = await company.Client.PostJsonAsync($"/api/invoices/{invoice.Id}/payments", NewPayment(100));
+        var negative = await company.Client.PostJsonAsync($"/api/invoices/{invoice.Id}/payments", NewPayment(-1));
 
         onDraft.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         partly.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -83,7 +83,7 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
         var noReason = await company.Client.PostJsonAsync($"/api/invoices/{draft.Id}/void", new VoidInvoiceCommand(""));
         var voided = await company.Client.PostJsonAsync($"/api/invoices/{draft.Id}/void", new VoidInvoiceCommand("Billed to the wrong customer"));
         var voidAgain = await company.Client.PostJsonAsync($"/api/invoices/{draft.Id}/void", new VoidInvoiceCommand("Again"));
-        var payVoid = await company.Client.PutJsonAsync($"/api/invoices/{draft.Id}/amount-paid", new RecordAmountPaidCommand(10));
+        var payVoid = await company.Client.PostJsonAsync($"/api/invoices/{draft.Id}/payments", NewPayment(10));
 
         voidDraft.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await voidDraft.ReadAsync<ProblemDetails>()).Detail!.ShouldContain("Delete it instead");
@@ -148,13 +148,13 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
     {
         var company = await factory.CreateTenantAsync();
         var invoice = await company.Client.CreateIssuedInvoiceAsync("INV-001");
-        await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}/amount-paid", new RecordAmountPaidCommand(50));
+        await company.Client.PostJsonAsync($"/api/invoices/{invoice.Id}/payments", NewPayment(50));
         await company.Client.PostJsonAsync($"/api/invoices/{invoice.Id}/void", new VoidInvoiceCommand("Duplicate"));
 
         var logs = await company.Client.GetAsync<PagedResult<AuditLogDto>>("/api/tenant/audit-logs?action=invoice.");
 
         logs.Items.Select(l => l.Action).ShouldBe(
-            ["invoice.created", "invoice.issued", "invoice.payment_changed", "invoice.voided"], ignoreOrder: true);
+            ["invoice.created", "invoice.issued", "invoice.voided"], ignoreOrder: true);
         logs.Items.ShouldAllBe(l => l.EntityId == invoice.Id.ToString());
     }
 
@@ -168,7 +168,7 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
 
         (await employee.PostAsync($"/api/invoices/{draft.Id}/issue", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await accountant.PostAsync($"/api/invoices/{draft.Id}/issue", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await employee.PutJsonAsync($"/api/invoices/{draft.Id}/amount-paid", new RecordAmountPaidCommand(1)))
+        (await employee.PostJsonAsync($"/api/invoices/{draft.Id}/payments", NewPayment(1)))
             .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await accountant.PostJsonAsync($"/api/invoices/{draft.Id}/void", new VoidInvoiceCommand("Duplicate")))
             .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -187,7 +187,7 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
         (await mine.Client.PostAsync($"/api/invoices/{draft.Id}/issue", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await mine.Client.PostJsonAsync($"/api/invoices/{issued.Id}/void", new VoidInvoiceCommand("Mine now")))
             .StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        (await mine.Client.PutJsonAsync($"/api/invoices/{issued.Id}/amount-paid", new RecordAmountPaidCommand(301)))
+        (await mine.Client.PostJsonAsync($"/api/invoices/{issued.Id}/payments", NewPayment(301)))
             .StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await theirs.Client.GetAsync<InvoiceDto>($"/api/invoices/{draft.Id}")).State.ShouldBe(InvoiceState.Draft);
         (await theirs.Client.GetAsync<InvoiceDto>($"/api/invoices/{issued.Id}")).Status.ShouldBe(InvoiceStatus.Unpaid);

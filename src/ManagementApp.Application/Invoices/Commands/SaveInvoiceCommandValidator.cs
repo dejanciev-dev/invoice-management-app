@@ -25,7 +25,6 @@ public sealed class SaveInvoiceCommandValidator : AbstractValidator<SaveInvoiceC
         RuleFor(v => v.Tax).GreaterThanOrEqualTo(0);
         RuleFor(v => v.Tax).LessThanOrEqualTo(100)
             .When(v => v.TaxType == TaxType.Percentage);
-        RuleFor(v => v.AmountPaid).GreaterThanOrEqualTo(0);
 
         RuleFor(v => v.Items).NotEmpty().WithMessage("An invoice needs at least one item.");
         RuleForEach(v => v.Items).ChildRules(item =>

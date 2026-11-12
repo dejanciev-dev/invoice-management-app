@@ -22,7 +22,6 @@ public sealed record SaveInvoiceCommand
     public DiscountType DiscountType { get; init; }
     public decimal Tax { get; init; }
     public TaxType TaxType { get; init; }
-    public decimal AmountPaid { get; init; }
     public IReadOnlyList<InvoiceItemInput> Items { get; init; } = [];
 
     public void ApplyTo(Invoice invoice)
@@ -39,7 +38,6 @@ public sealed record SaveInvoiceCommand
         invoice.DiscountType = DiscountType;
         invoice.Tax = Tax;
         invoice.TaxType = TaxType;
-        invoice.AmountPaid = AmountPaid;
         invoice.ReplaceItems(Items.Select(i => new InvoiceItem
         {
             Description = i.Description.Trim(),

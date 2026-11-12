@@ -24,25 +24,14 @@ public sealed class UpdateInvoiceHandler(
         await context.Customers.EnsureCustomerCanBeUsedAsync(command.CustomerId, invoice.CustomerId, cancellationToken);
 
         var previousTotal = invoice.Total;
-        var previousAmountPaid = invoice.AmountPaid;
         command.ApplyTo(invoice);
 
         auditLogger.Add(new AuditEntry(AuditActions.InvoiceUpdated)
         {
             EntityType = nameof(Invoice),
             EntityId = invoice.Id.ToString(),
-            Details = new { invoice.InvoiceNumber, PreviousTotal = previousTotal, invoice.Total }
+            Details = new { PreviousTotal = previousTotal, invoice.Total }
         });
-
-        if (previousAmountPaid != invoice.AmountPaid)
-        {
-            auditLogger.Add(new AuditEntry(AuditActions.InvoicePaymentChanged)
-            {
-                EntityType = nameof(Invoice),
-                EntityId = invoice.Id.ToString(),
-                Details = new { invoice.InvoiceNumber, PreviousAmountPaid = previousAmountPaid, invoice.AmountPaid, invoice.Currency }
-            });
-        }
 
         await context.SaveChangesAsync(cancellationToken);
 
