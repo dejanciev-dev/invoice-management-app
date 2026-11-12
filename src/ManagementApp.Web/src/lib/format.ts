@@ -43,3 +43,6 @@ export function formatUnitPrice(product: { unitPrice: number; unit: string | nul
   const price = formatMoney(product.unitPrice, currency)
   return product.unit ? `${price} / ${product.unit}` : price
 }
+
+/** How an invoice is named: its number, or "Draft" until issuing gives it one. */
+export const invoiceTitle = (invoice: { invoiceNumber: string | null }) => invoice.invoiceNumber ?? 'Draft'

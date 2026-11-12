@@ -23,7 +23,6 @@ function CreateNew() {
 
   const defaults = tenant
     ? newInvoiceValues(undefined, {
-        invoiceNumber: tenant.nextInvoiceNumber,
         currency: tenant.settings.profile.defaultCurrency,
         paymentTermsDays: tenant.settings.invoice.defaultPaymentTermsDays,
         taxRate: tenant.settings.invoice.defaultTaxRate,
@@ -82,8 +81,12 @@ function Editor({ id, defaultValues }: { id?: number; defaultValues: InvoiceForm
   return (
     <>
       <PageHeader
-        title={isNew ? 'New invoice' : `Edit ${defaultValues.invoiceNumber}`}
-        description={isNew ? 'Saved as a draft: you can still change it until you issue it.' : 'Changes are saved when you click Save changes.'}
+        title={isNew ? 'New invoice' : 'Edit draft'}
+        description={
+          isNew
+            ? `Saved as a draft you can keep changing. Issuing it gives it the next invoice number${tenant ? ` (${tenant.nextInvoiceNumber})` : ''}.`
+            : 'Changes are saved when you click Save changes.'
+        }
       />
       <InvoiceForm
         defaultValues={defaultValues}

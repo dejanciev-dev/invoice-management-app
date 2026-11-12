@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiRequest, json, query, withTenant } from './client'
+import { tenantKeys } from './tenant'
 import type { Invoice, InvoiceStats, InvoiceStatus, InvoiceSummary, Paged, SaveInvoiceRequest } from './types'
 
 export const INVOICE_PAGE_SIZE = 25
@@ -79,7 +80,7 @@ export function useDeleteInvoice() {
 }
 
 /** Shared handling for the lifecycle actions: show the returned invoice and refresh lists and totals. */
-function useInvoiceTransition<TInput>(request: (input: TInput) => Promise<Invoice>) {
+function useInvoiceTransition<TInput>(request: (input: TInput) => Promise<Invoice>, onDone?: () => Promise<void>) {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -87,13 +88,19 @@ function useInvoiceTransition<TInput>(request: (input: TInput) => Promise<Invoic
     onSuccess: async (invoice) => {
       queryClient.setQueryData(invoiceKeys.detail(invoice.id), invoice)
       await queryClient.invalidateQueries({ queryKey: invoiceKeys.all, refetchType: 'none' })
+      await onDone?.()
     },
   })
 }
 
-/** Makes a draft final and payable. It cannot be edited or deleted afterwards. */
+/** Makes a draft final and payable under the company's next number. It cannot be edited or deleted afterwards. */
 export function useIssueInvoice() {
-  return useInvoiceTransition((id: number) => apiRequest<Invoice>(`/invoices/${id}/issue`, { method: 'POST' }))
+  const queryClient = useQueryClient()
+  return useInvoiceTransition(
+    (id: number) => apiRequest<Invoice>(`/invoices/${id}/issue`, { method: 'POST' }),
+    // Issuing takes the company's next number, which the current-tenant data shows.
+    () => queryClient.invalidateQueries({ queryKey: tenantKeys.current, exact: true }),
+  )
 }
 
 /** Cancels an issued invoice; it stays on record but no longer counts as owed. */
