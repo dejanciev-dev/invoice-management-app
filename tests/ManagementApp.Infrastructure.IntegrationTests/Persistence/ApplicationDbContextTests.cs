@@ -8,7 +8,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task SaveChangesAsync_GivenNewInvoice_SetsCreatedAuditFields()
     {
-        var invoice = NewInvoice("INV-001");
+        var invoice = NewInvoice();
 
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -21,7 +21,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task SaveChangesAsync_GivenModifiedInvoice_SetsLastModifiedAuditFields()
     {
-        var invoice = NewInvoice("INV-001");
+        var invoice = NewInvoice();
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -36,7 +36,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task Invoices_AlwaysLoadTheirItems()
     {
-        Context.Invoices.Add(NewInvoice("INV-001", new InvoiceItem { Description = "Design", Quantity = 2, UnitPrice = 50 }));
+        Context.Invoices.Add(NewInvoice(new InvoiceItem { Description = "Design", Quantity = 2, UnitPrice = 50 }));
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await using var readContext = CreateContext();
@@ -49,7 +49,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task ReplaceItems_DeletesRemovedItemRows()
     {
-        var invoice = NewInvoice("INV-001",
+        var invoice = NewInvoice(
             new InvoiceItem { Description = "Old 1", Quantity = 1, UnitPrice = 10 },
             new InvoiceItem { Description = "Old 2", Quantity = 1, UnitPrice = 10 });
         Context.Invoices.Add(invoice);
@@ -66,7 +66,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task DeletingInvoice_CascadesToItems()
     {
-        var invoice = NewInvoice("INV-001", new InvoiceItem { Description = "Design", Quantity = 1, UnitPrice = 10 });
+        var invoice = NewInvoice(new InvoiceItem { Description = "Design", Quantity = 1, UnitPrice = 10 });
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -80,34 +80,51 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
     [Fact]
     public async Task InvoiceNumber_IsUniquePerTenant()
     {
-        Context.Invoices.Add(NewInvoice("INV-001"));
-        Context.Invoices.Add(NewInvoice("INV-001"));
+        Context.Invoices.Add(IssuedInvoice("INV-001"));
+        Context.Invoices.Add(IssuedInvoice("INV-001"));
 
         await Should.ThrowAsync<DbUpdateException>(() => Context.SaveChangesAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
+    public async Task Drafts_HaveNoNumber_SoAnyNumberOfThemCanExist()
+    {
+        Context.Invoices.Add(NewInvoice());
+        Context.Invoices.Add(NewInvoice());
+        Context.Invoices.Add(IssuedInvoice("INV-001"));
+        await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        (await Context.Invoices.CountAsync(i => i.InvoiceNumber == null, TestContext.Current.CancellationToken)).ShouldBe(2);
+    }
+
+    [Fact]
     public async Task InvoiceNumber_CanBeReusedByAnotherTenant()
     {
-        Context.Invoices.Add(NewInvoice("INV-001"));
+        Context.Invoices.Add(IssuedInvoice("INV-001"));
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await using var other = CreateContext(OtherTenantId);
-        other.Invoices.Add(NewInvoice("INV-001"));
+        other.Invoices.Add(IssuedInvoice("INV-001"));
         await other.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    private static Invoice NewInvoice(string number, params InvoiceItem[] items)
+    private static Invoice NewInvoice(params InvoiceItem[] items)
     {
         var invoice = new Invoice
         {
             OwnerId = UserId,
-            InvoiceNumber = number,
             From = "Acme Ltd",
             To = "Globex Corporation",
             IssueDate = new DateOnly(2026, 2, 1)
         };
         invoice.ReplaceItems(items);
+        return invoice;
+    }
+
+    private static Invoice IssuedInvoice(string number)
+    {
+        var invoice = NewInvoice(new InvoiceItem { Description = "Work", Quantity = 1, UnitPrice = 10 });
+        invoice.Issue(new DateTimeOffset(2026, 2, 1, 9, 0, 0, TimeSpan.Zero), number);
         return invoice;
     }
 }

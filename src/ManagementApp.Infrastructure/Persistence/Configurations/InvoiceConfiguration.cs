@@ -11,7 +11,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
     public void Configure(EntityTypeBuilder<Invoice> builder)
     {
-        builder.Property(i => i.InvoiceNumber).HasMaxLength(50).IsRequired();
+        builder.Property(i => i.InvoiceNumber).HasMaxLength(Invoice.InvoiceNumberMaxLength); // null while a draft
         builder.Property(i => i.From).HasMaxLength(1000).IsRequired();
         builder.Property(i => i.To).HasMaxLength(1000).IsRequired();
         builder.Property(i => i.PaymentTerms).HasMaxLength(200);
@@ -47,7 +47,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(i => i.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Numbers are unique per company; the index also serves every tenant-filtered invoice query.
+        // Issued numbers are unique per company (drafts have none, and NULLs never collide); the index also serves
+        // every tenant-filtered invoice query.
         builder.HasIndex(i => new { i.TenantId, i.InvoiceNumber }).IsUnique();
         builder.HasIndex(i => new { i.TenantId, i.IssueDate });
         builder.HasIndex(i => new { i.TenantId, i.State, i.DueDate }); // status filters, overdue and statistics
