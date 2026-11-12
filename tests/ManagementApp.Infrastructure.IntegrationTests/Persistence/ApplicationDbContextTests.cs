@@ -26,7 +26,7 @@ public sealed class ApplicationDbContextTests : SqliteDbContextTest
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Clock.Advance(TimeSpan.FromHours(1));
-        invoice.AmountPaid = 10m;
+        invoice.Notes = "Changed";
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         invoice.LastModified.ShouldBe(Clock.GetUtcNow());

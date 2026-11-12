@@ -74,7 +74,7 @@ public sealed class TenantIsolationTests : SqliteDbContextTest
         await using var context = CreateContext();
         var loaded = await context.Invoices.IgnoreQueryFilters().SingleAsync(i => i.Id == theirs.Id, CancellationToken);
 
-        loaded.AmountPaid = 1;
+        loaded.Notes = "Hijacked";
         await Should.ThrowAsync<InvalidOperationException>(() => context.SaveChangesAsync(CancellationToken));
 
         context.ChangeTracker.Clear();
