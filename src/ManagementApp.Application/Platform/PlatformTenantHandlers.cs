@@ -252,7 +252,8 @@ public sealed class UpdateSubscriptionHandler(
 /// Permanently deletes a tenant and all its business data. Safeguards: the tenant must already be switched off and
 /// the caller must repeat its exact name. Accounts are kept (they may belong to other tenants), and so is the audit log.
 /// </summary>
-public sealed class DeleteTenantHandler(IApplicationDbContext context, IAuditLogger auditLogger, TimeProvider timeProvider)
+public sealed class DeleteTenantHandler(
+    IApplicationDbContext context, IAuditLogger auditLogger, IFileStorage fileStorage, TimeProvider timeProvider)
 {
     public async Task HandleAsync(Guid tenantId, string? confirmName, CancellationToken cancellationToken)
     {
@@ -292,6 +293,10 @@ public sealed class DeleteTenantHandler(IApplicationDbContext context, IAuditLog
             });
             await context.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
+
+        // Files are removed once the data is gone. Should this fail, the files stay behind under a prefix nothing
+        // refers to any more, which is safer than deleting files of a company that still exists.
+        await fileStorage.DeleteAllAsync(tenantId, cancellationToken);
     }
 }
 
