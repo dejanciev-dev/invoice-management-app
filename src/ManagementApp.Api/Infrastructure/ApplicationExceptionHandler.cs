@@ -19,6 +19,14 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problemDe
                 Status = StatusCodes.Status400BadRequest,
                 Title = "One or more validation errors occurred."
             },
+            // A body or parameter that cannot be read, e.g. malformed JSON. Only thrown in Development (elsewhere the
+            // framework answers 400 itself), where it would otherwise surface as a 500.
+            BadHttpRequestException badRequest => new ProblemDetails
+            {
+                Status = badRequest.StatusCode,
+                Title = "The request could not be read.",
+                Detail = badRequest.Message
+            },
             NotFoundException notFound => new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,
