@@ -490,3 +490,6 @@ coverage/
 
 # Production web build copied into the API (see Dockerfile)
 src/ManagementApp.Api/wwwroot/
+
+# Files stored by the Local file storage provider
+**/App_Data/
