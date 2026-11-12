@@ -66,6 +66,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
         services.AddFileStorage(configuration);
+        services.AddSingleton<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
 
         services.AddSingleton<TenantJobRunner>();
         services.AddSingleton<OverdueInvoiceReminderJob>();
