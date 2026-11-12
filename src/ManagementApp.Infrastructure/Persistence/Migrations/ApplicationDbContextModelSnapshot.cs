@@ -115,6 +115,65 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.ToTable("ImpersonationSessions");
                 });
 
+            modelBuilder.Entity("ManagementApp.Domain.Entities.CreditNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("CreditNotes");
+                });
+
             modelBuilder.Entity("ManagementApp.Domain.Entities.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -198,6 +257,10 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CreditedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Currency")
                         .IsRequired()
@@ -350,6 +413,9 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("NextCreditNoteNumber")
+                        .HasColumnType("int");
 
                     b.Property<int>("NextNumber")
                         .HasColumnType("int");
@@ -895,6 +961,21 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ManagementApp.Domain.Entities.CreditNote", b =>
+                {
+                    b.HasOne("ManagementApp.Domain.Entities.Invoice", null)
+                        .WithMany("CreditNotes")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ManagementApp.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ManagementApp.Domain.Entities.Customer", b =>
                 {
                     b.HasOne("ManagementApp.Domain.Tenancy.Tenant", null)
@@ -1005,6 +1086,11 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                             b1.Property<string>("BrandColor")
                                 .HasMaxLength(7)
                                 .HasColumnType("nvarchar(7)");
+
+                            b1.Property<string>("CreditNotePrefix")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("DefaultNotes")
                                 .HasMaxLength(2000)
@@ -1207,6 +1293,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ManagementApp.Domain.Entities.Invoice", b =>
                 {
+                    b.Navigation("CreditNotes");
+
                     b.Navigation("Items");
 
                     b.Navigation("Payments");

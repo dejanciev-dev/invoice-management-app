@@ -28,6 +28,7 @@ public class CsvFileBuilder : ICsvFileBuilder
         nameof(InvoiceRecord.Tax),
         nameof(InvoiceRecord.Total),
         nameof(InvoiceRecord.AmountPaid),
+        nameof(InvoiceRecord.Credited),
         nameof(InvoiceRecord.BalanceDue),
         nameof(InvoiceRecord.Status)
     ];
@@ -51,6 +52,7 @@ public class CsvFileBuilder : ICsvFileBuilder
                 WriteAmount(csv, record.Tax);
                 WriteAmount(csv, record.Total);
                 WriteAmount(csv, record.AmountPaid);
+                WriteAmount(csv, record.Credited);
                 WriteAmount(csv, record.BalanceDue);
                 csv.WriteField(record.Status.ToString());
                 csv.EndRecord();

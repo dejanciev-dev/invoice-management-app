@@ -25,6 +25,9 @@ public interface IApplicationDbContext
     /// <summary>Read-only access for queries; payments are added and removed through their <see cref="Invoice"/>.</summary>
     DbSet<Payment> Payments { get; }
 
+    /// <summary>Read-only access for queries; credit notes are issued through their <see cref="Invoice"/>.</summary>
+    DbSet<CreditNote> CreditNotes { get; }
+
     DbSet<Tenant> Tenants { get; }
 
     DbSet<TenantMembership> TenantMemberships { get; }
