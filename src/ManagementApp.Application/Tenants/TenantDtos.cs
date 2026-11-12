@@ -19,6 +19,7 @@ public sealed record TenantProfileDto
 public sealed record InvoiceSettingsDto
 {
     public string NumberPrefix { get; init; } = "INV-";
+    public string CreditNotePrefix { get; init; } = "CN-";
     public int NextNumber { get; init; } = 1;
     public int NumberPadding { get; init; } = 4;
     public int DefaultPaymentTermsDays { get; init; } = 30;

@@ -14,5 +14,6 @@ public sealed record InvoiceRecord(
     decimal Tax,
     decimal Total,
     decimal AmountPaid,
+    decimal Credited,
     decimal BalanceDue,
     InvoiceStatus Status);

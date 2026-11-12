@@ -35,7 +35,7 @@ public sealed class GetInvoiceStatsHandler(IApplicationDbContext context, Tenant
             .Select(g => new CurrencyInvoiceStatsDto(
                 g.Key,
                 g.Count(),
-                g.Sum(i => EF.Property<decimal>(i, InvoiceTotalsQueries.StoredTotal)),
+                g.Sum(i => EF.Property<decimal>(i, InvoiceTotalsQueries.StoredTotal) - i.CreditedAmount), // net of credit notes
                 g.Count(i => EF.Property<decimal>(i, InvoiceTotalsQueries.StoredBalanceDue) > 0),
                 g.Sum(i => EF.Property<decimal>(i, InvoiceTotalsQueries.StoredBalanceDue) > 0
                     ? EF.Property<decimal>(i, InvoiceTotalsQueries.StoredBalanceDue)

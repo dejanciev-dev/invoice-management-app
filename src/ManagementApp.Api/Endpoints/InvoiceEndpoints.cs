@@ -39,6 +39,8 @@ public static class InvoiceEndpoints
             .WithSummary("Void an issued invoice, with a reason");
         group.MapPost("/{id:int}/payments", RecordPayment).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
             .WithSummary("Record a payment on an issued invoice (not more than the balance due)");
+        group.MapPost("/{id:int}/credit-notes", IssueCreditNote).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
+            .WithSummary("Issue a credit note against an issued invoice (not more than the balance due)");
         group.MapDelete("/{id:int}/payments/{paymentId:int}", DeletePayment).RequireAuthorization(Policies.Has(Permission.InvoicesDelete))
             .WithSummary("Delete a payment recorded by mistake");
 
@@ -84,6 +86,10 @@ public static class InvoiceEndpoints
 
     private static async Task<Ok<InvoiceDto>> RecordPayment(
         int id, RecordPaymentCommand command, RecordPaymentHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
+
+    private static async Task<Ok<InvoiceDto>> IssueCreditNote(
+        int id, IssueCreditNoteCommand command, IssueCreditNoteHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
 
     private static async Task<Ok<InvoiceDto>> DeletePayment(

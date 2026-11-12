@@ -17,6 +17,7 @@ public sealed record InvoiceDto(
     decimal Tax,
     TaxType TaxType,
     decimal AmountPaid,
+    decimal CreditedAmount,
     IReadOnlyList<InvoiceItemDto> Items,
     decimal Subtotal,
     decimal DiscountAmount,
@@ -29,7 +30,8 @@ public sealed record InvoiceDto(
     DateTimeOffset? VoidedAt,
     string? VoidReason,
     InvoiceCustomerDto? Customer,
-    IReadOnlyList<PaymentDto> Payments);
+    IReadOnlyList<PaymentDto> Payments,
+    IReadOnlyList<CreditNoteDto> CreditNotes);
 
 /// <summary>The saved customer an invoice was made for. <c>IsDeleted</c> customers are still shown, but not linked to.</summary>
 public sealed record InvoiceCustomerDto(int Id, string Name, bool IsDeleted);
@@ -49,3 +51,6 @@ public sealed record InvoiceItemDto(int Id, string Description, decimal Quantity
 
 public sealed record PaymentDto(
     int Id, decimal Amount, DateOnly Date, PaymentMethod Method, string? Reference, string? Notes, DateTimeOffset RecordedAt);
+
+public sealed record CreditNoteDto(
+    int Id, string Number, DateOnly Date, string Reason, decimal Amount, decimal TaxAmount, decimal NetAmount);
