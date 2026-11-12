@@ -77,3 +77,35 @@ export function useDeleteInvoice() {
     },
   })
 }
+
+/** Shared handling for the lifecycle actions: show the returned invoice and refresh lists and totals. */
+function useInvoiceTransition<TInput>(request: (input: TInput) => Promise<Invoice>) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: request,
+    onSuccess: async (invoice) => {
+      queryClient.setQueryData(invoiceKeys.detail(invoice.id), invoice)
+      await queryClient.invalidateQueries({ queryKey: invoiceKeys.all, refetchType: 'none' })
+    },
+  })
+}
+
+/** Makes a draft final and payable. It cannot be edited or deleted afterwards. */
+export function useIssueInvoice() {
+  return useInvoiceTransition((id: number) => apiRequest<Invoice>(`/invoices/${id}/issue`, { method: 'POST' }))
+}
+
+/** Cancels an issued invoice; it stays on record but no longer counts as owed. */
+export function useVoidInvoice() {
+  return useInvoiceTransition(({ id, reason }: { id: number; reason: string }) =>
+    apiRequest<Invoice>(`/invoices/${id}/void`, { method: 'POST', ...json({ reason }) }),
+  )
+}
+
+/** Sets how much has been received on an issued invoice. */
+export function useRecordAmountPaid() {
+  return useInvoiceTransition(({ id, amountPaid }: { id: number; amountPaid: number }) =>
+    apiRequest<Invoice>(`/invoices/${id}/amount-paid`, { method: 'PUT', ...json({ amountPaid }) }),
+  )
+}

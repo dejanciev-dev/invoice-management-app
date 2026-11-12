@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { useInvoice, useSaveInvoice } from '../api/invoices'
 import { useCurrentTenant } from '../api/tenant'
@@ -44,6 +44,22 @@ function EditExisting({ id }: { id: number }) {
   }
   if (error) return <Alert>Could not load the invoice. Please refresh the page.</Alert>
 
+  // Issued and void invoices are final; the server refuses changes, so the form is not offered at all.
+  if (invoice.state !== 'Draft') {
+    return (
+      <>
+        <PageHeader title={`Edit ${invoice.invoiceNumber}`} />
+        <Alert>
+          Invoice {invoice.invoiceNumber} is {invoice.state === 'Issued' ? 'issued' : 'void'} and can no longer be edited.
+          Only drafts can be changed.{' '}
+          <Link to={`/invoices/${id}`} className="font-medium underline">
+            Back to the invoice
+          </Link>
+        </Alert>
+      </>
+    )
+  }
+
   return <Editor id={id} defaultValues={invoiceToValues(invoice)} />
 }
 
@@ -67,13 +83,13 @@ function Editor({ id, defaultValues }: { id?: number; defaultValues: InvoiceForm
     <>
       <PageHeader
         title={isNew ? 'New invoice' : `Edit ${defaultValues.invoiceNumber}`}
-        description={isNew ? 'Totals update as you type.' : 'Changes are saved when you click Save changes.'}
+        description={isNew ? 'Saved as a draft: you can still change it until you issue it.' : 'Changes are saved when you click Save changes.'}
       />
       <InvoiceForm
         defaultValues={defaultValues}
         onSubmit={submit}
         onCancel={() => navigate(isNew ? '/' : `/invoices/${id}`)}
-        submitLabel={isNew ? 'Create invoice' : 'Save changes'}
+        submitLabel={isNew ? 'Save draft' : 'Save changes'}
         submitting={save.isPending}
         serverError={save.error}
         companyDefaults={companyDefaults || undefined}

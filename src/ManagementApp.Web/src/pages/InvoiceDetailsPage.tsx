@@ -1,14 +1,16 @@
-import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, Ban, Banknote, Pencil, Printer, Send, Trash2 } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
-import { useDeleteInvoice, useInvoice } from '../api/invoices'
+import { useDeleteInvoice, useInvoice, useIssueInvoice, useRecordAmountPaid, useVoidInvoice } from '../api/invoices'
 import { tenantLogoUrl, useCurrentTenant } from '../api/tenant'
 import type { CurrentTenant, Invoice } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
-import { Alert, Button, ButtonLink, Card, Spinner } from '../components/ui'
+import { inputClass } from '../components/styles'
+import { Alert, Button, ButtonLink, Card, Field, Spinner } from '../components/ui'
 import { formatDate, formatMoney } from '../lib/format'
+import { formatDateTime } from '../lib/labels'
 import { NotFoundPage } from './NotFoundPage'
 
 export function InvoiceDetailsPage() {
@@ -42,59 +44,206 @@ function InvoiceDetails({ id }: { id: number }) {
           )}
         </p>
       )}
+      <StateNotice invoice={invoice} />
       <InvoiceDocument invoice={invoice} tenant={tenant} />
     </>
   )
 }
 
+type ToolbarMode = 'actions' | 'delete' | 'void' | 'payment'
+
+/**
+ * The actions follow the invoice's lifecycle: drafts can be edited, deleted or issued; issued invoices can only have
+ * payments recorded or be voided; void invoices are closed.
+ */
 function Toolbar({ invoice }: { invoice: Invoice }) {
   const navigate = useNavigate()
   const deleteInvoice = useDeleteInvoice()
-  const [confirming, setConfirming] = useState(false)
+  const issueInvoice = useIssueInvoice()
+  const [mode, setMode] = useState<ToolbarMode>('actions')
   const canEdit = useCan('InvoicesEdit')
   const canDelete = useCan('InvoicesDelete')
+  const isDraft = invoice.state === 'Draft'
+  const isIssued = invoice.state === 'Issued'
 
   const remove = () =>
     deleteInvoice.mutate(invoice.id, { onSuccess: () => navigate('/', { replace: true }) })
+  const done = () => setMode('actions')
 
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
-      <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden />
-        All invoices
-      </Link>
-      {confirming ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm">Delete invoice {invoice.invoiceNumber}?</span>
-          <Button variant="secondary" onClick={() => setConfirming(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={remove} loading={deleteInvoice.isPending}>
-            Delete
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => window.print()}>
-            <Printer className="size-4" aria-hidden />
-            Print
-          </Button>
-          {canDelete && (
-            <Button variant="secondary" onClick={() => setConfirming(true)}>
-              <Trash2 className="size-4" aria-hidden />
+    <div className="mb-6 print:hidden">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+          <ArrowLeft className="size-4" aria-hidden />
+          All invoices
+        </Link>
+        {mode === 'delete' ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm">Delete draft {invoice.invoiceNumber}?</span>
+            <Button variant="secondary" onClick={done}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={remove} loading={deleteInvoice.isPending}>
               Delete
             </Button>
-          )}
-          {canEdit && (
-            <ButtonLink to={`/invoices/${invoice.id}/edit`}>
-              <Pencil className="size-4" aria-hidden />
-              Edit
-            </ButtonLink>
-          )}
+          </div>
+        ) : mode === 'actions' ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => window.print()}>
+              <Printer className="size-4" aria-hidden />
+              Print
+            </Button>
+            {isDraft && canDelete && (
+              <Button variant="secondary" onClick={() => setMode('delete')}>
+                <Trash2 className="size-4" aria-hidden />
+                Delete
+              </Button>
+            )}
+            {isDraft && canEdit && (
+              <ButtonLink variant="secondary" to={`/invoices/${invoice.id}/edit`}>
+                <Pencil className="size-4" aria-hidden />
+                Edit
+              </ButtonLink>
+            )}
+            {isDraft && canEdit && (
+              <Button onClick={() => issueInvoice.mutate(invoice.id)} loading={issueInvoice.isPending}>
+                <Send className="size-4" aria-hidden />
+                Issue
+              </Button>
+            )}
+            {isIssued && canDelete && (
+              <Button variant="secondary" onClick={() => setMode('void')}>
+                <Ban className="size-4" aria-hidden />
+                Void
+              </Button>
+            )}
+            {isIssued && canEdit && (
+              <Button onClick={() => setMode('payment')}>
+                <Banknote className="size-4" aria-hidden />
+                Record payment
+              </Button>
+            )}
+          </div>
+        ) : null}
+      </div>
+      {mode === 'void' && <VoidForm invoice={invoice} onDone={done} />}
+      {mode === 'payment' && <PaymentForm invoice={invoice} onDone={done} />}
+      {(issueInvoice.error || deleteInvoice.error) && (
+        <div className="mt-3">
+          <Alert>{(issueInvoice.error ?? deleteInvoice.error)?.message}</Alert>
         </div>
       )}
     </div>
   )
+}
+
+function VoidForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void }) {
+  const voidInvoice = useVoidInvoice()
+  const [reason, setReason] = useState('')
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    voidInvoice.mutate({ id: invoice.id, reason: reason.trim() }, { onSuccess: onDone })
+  }
+
+  return (
+    <Card className="mt-4 p-4">
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm">
+          Voiding cancels invoice <span className="font-medium">{invoice.invoiceNumber}</span>. It stays on record but is no
+          longer owed, and it cannot be undone.
+        </p>
+        <Field label="Reason" htmlFor="voidReason" error={voidInvoice.error instanceof ApiError ? voidInvoice.error.messages.join(' ') : undefined}>
+          <input
+            id="voidReason"
+            required
+            maxLength={500}
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Billed to the wrong customer"
+            className={inputClass}
+          />
+        </Field>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="danger" loading={voidInvoice.isPending} disabled={!reason.trim()}>
+            Void invoice
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+function PaymentForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void }) {
+  const recordAmountPaid = useRecordAmountPaid()
+  const [amount, setAmount] = useState(String(invoice.amountPaid || invoice.total))
+  const value = Number(amount)
+  const valid = amount.trim() !== '' && Number.isFinite(value) && value >= 0
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    recordAmountPaid.mutate({ id: invoice.id, amountPaid: value }, { onSuccess: onDone })
+  }
+
+  return (
+    <Card className="mt-4 p-4">
+      <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Field
+          label={`Total received (${invoice.currency})`}
+          htmlFor="amountPaid"
+          hint={`Of ${formatMoney(invoice.total, invoice.currency)} billed.`}
+          error={recordAmountPaid.error instanceof ApiError ? recordAmountPaid.error.messages.join(' ') : undefined}
+          className="sm:w-64"
+        >
+          <input
+            id="amountPaid"
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            autoFocus
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <div className="flex gap-2 sm:mb-6">
+          <Button variant="secondary" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={recordAmountPaid.isPending} disabled={!valid}>
+            Save
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+/** Explains what the invoice's state means for the user, above the document. */
+function StateNotice({ invoice }: { invoice: Invoice }) {
+  if (invoice.state === 'Draft') {
+    return (
+      <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-200 print:hidden">
+        This invoice is a draft. Issue it when it's ready to send: after that it can no longer be edited or deleted.
+      </p>
+    )
+  }
+
+  if (invoice.state === 'Void') {
+    return (
+      <p className="mb-4 rounded-lg border border-line bg-subtle px-4 py-3 text-sm print:hidden">
+        Voided {formatDateTime(invoice.voidedAt)}
+        {invoice.voidReason && <>: {invoice.voidReason}</>}
+      </p>
+    )
+  }
+
+  return null
 }
 
 function InvoiceDocument({ invoice, tenant }: { invoice: Invoice; tenant?: CurrentTenant }) {

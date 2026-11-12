@@ -10,7 +10,7 @@ import { statusLabels } from '../lib/status'
 import { Alert, ButtonLink, Card, PageHeader, Pager, Spinner } from '../components/ui'
 import { firstLine, formatDate, formatMoney, formatTotalsByCurrency } from '../lib/format'
 
-const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid']
+const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Draft', 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid', 'Void']
 
 export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -119,8 +119,8 @@ export function InvoicesPage() {
   )
 }
 
-/** Totals across all of the company's invoices (not just the current page), calculated on the server. */
-function Stats({ stats: { currencies, openCount, overdueCount, invoiceCount } }: { stats: InvoiceStats }) {
+/** Totals across all of the company's issued invoices (not just the current page), calculated on the server. */
+function Stats({ stats: { currencies, openCount, overdueCount, invoiceCount, draftCount } }: { stats: InvoiceStats }) {
   const count = (n: number) => `${n} ${n === 1 ? 'invoice' : 'invoices'}`
   const { data: session } = useCurrentUser()
   const fallbackCurrency = session?.activeTenant?.defaultCurrency ?? currencies[0]?.currency ?? 'USD'
@@ -134,7 +134,11 @@ function Stats({ stats: { currencies, openCount, overdueCount, invoiceCount } }:
   const stats = [
     { label: 'Outstanding', value: per((c) => c.outstanding), detail: `${openCount} open` },
     { label: 'Overdue', value: per((c) => c.overdue), detail: count(overdueCount) },
-    { label: 'Total billed', value: per((c) => c.billed), detail: count(invoiceCount) },
+    {
+      label: 'Total billed',
+      value: per((c) => c.billed),
+      detail: `${count(invoiceCount)} issued${draftCount > 0 ? ` · ${draftCount} ${draftCount === 1 ? 'draft' : 'drafts'}` : ''}`,
+    },
   ]
 
   return (

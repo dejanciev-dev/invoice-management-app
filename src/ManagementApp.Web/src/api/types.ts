@@ -1,6 +1,10 @@
 export type AdjustmentType = 'Flat' | 'Percentage'
 
-export type InvoiceStatus = 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overdue'
+/** Drafts and void invoices show their state; issued invoices show their payment progress. */
+export type InvoiceStatus = 'Draft' | 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Void'
+
+/** Drafts can be edited and deleted; issued invoices are final and can only be voided. */
+export type InvoiceState = 'Draft' | 'Issued' | 'Void'
 
 export interface InvoiceItem {
   id: number
@@ -32,6 +36,10 @@ export interface Invoice {
   total: number
   balanceDue: number
   status: InvoiceStatus
+  state: InvoiceState
+  issuedAt: string | null
+  voidedAt: string | null
+  voidReason: string | null
   /** The saved customer the invoice was made for, if any; `to` is the printed snapshot of their details. */
   customer: InvoiceCustomer | null
 }
@@ -103,6 +111,8 @@ export interface InvoiceStats {
   invoiceCount: number
   openCount: number
   overdueCount: number
+  /** Drafts are not included in the other figures, which cover issued invoices only. */
+  draftCount: number
   currencies: CurrencyInvoiceStats[]
 }
 
