@@ -19,7 +19,7 @@ export function ReportsPage() {
     <>
       <PageHeader title="Financial reports" description="Totals are shown per currency and never converted or mixed." />
 
-      <dl className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {byStatus.map((s) => (
           <StatTile key={s.status} label="Invoices" value={s.count} detail={<StatusBadge status={s.status} />} />
         ))}
