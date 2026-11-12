@@ -13,7 +13,13 @@ public class Invoice : AuditableEntity, ITenantEntity
     /// <summary>The user who created the invoice.</summary>
     public required string OwnerId { get; set; }
 
-    public required string InvoiceNumber { get; set; }
+    /// <summary>
+    /// Drafts have no number. <see cref="Issue"/> assigns the next one from the company's sequence, so issued numbers
+    /// have no gaps and never change.
+    /// </summary>
+    public string? InvoiceNumber { get; private set; }
+
+    public const int InvoiceNumberMaxLength = 50;
 
     /// <summary>New invoices start as drafts. Only <see cref="Issue"/> and <see cref="Void"/> move them on.</summary>
     public InvoiceState State { get; private set; } = InvoiceState.Draft;
@@ -141,9 +147,14 @@ public class Invoice : AuditableEntity, ITenantEntity
         }
     }
 
-    /// <summary>Makes a draft final and payable. From now on its content cannot change.</summary>
-    public void Issue(DateTimeOffset now)
+    /// <summary>
+    /// Makes a draft final and payable under <paramref name="invoiceNumber"/>, the next number of the company's
+    /// sequence. From now on its content cannot change.
+    /// </summary>
+    public void Issue(DateTimeOffset now, string invoiceNumber)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(invoiceNumber);
+
         if (!IsDraft)
         {
             throw new DomainRuleException($"Invoice {InvoiceNumber} is already {Describe(State)}.");
@@ -151,11 +162,12 @@ public class Invoice : AuditableEntity, ITenantEntity
 
         if (Items.Count == 0)
         {
-            throw new DomainRuleException($"Invoice {InvoiceNumber} has no items and cannot be issued.");
+            throw new DomainRuleException("A draft without items cannot be issued.");
         }
 
         State = InvoiceState.Issued;
         IssuedAt = now;
+        InvoiceNumber = invoiceNumber;
     }
 
     /// <summary>Cancels an issued invoice. It stays on record, but is no longer payable or counted in totals.</summary>
@@ -164,7 +176,7 @@ public class Invoice : AuditableEntity, ITenantEntity
         if (State != InvoiceState.Issued)
         {
             throw new DomainRuleException(IsDraft
-                ? $"Invoice {InvoiceNumber} is a draft. Delete it instead of voiding it."
+                ? "This invoice is a draft. Delete it instead of voiding it."
                 : $"Invoice {InvoiceNumber} is already void.");
         }
 
@@ -187,7 +199,7 @@ public class Invoice : AuditableEntity, ITenantEntity
         if (State != InvoiceState.Issued)
         {
             throw new DomainRuleException(
-                $"Payments can only be recorded on issued invoices; invoice {InvoiceNumber} is {Describe(State)}.");
+                $"Payments can only be recorded on issued invoices; this one is {Describe(State)}.");
         }
 
         ArgumentOutOfRangeException.ThrowIfNegative(amountPaid);
