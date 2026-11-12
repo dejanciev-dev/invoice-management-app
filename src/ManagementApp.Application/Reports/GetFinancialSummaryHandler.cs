@@ -22,8 +22,10 @@ public sealed record FinancialSummaryDto(
 
 public static class InvoiceStatistics
 {
+    /// <summary>Money figures per currency. Only issued invoices count: drafts are not owed yet and void ones no longer.</summary>
     public static IReadOnlyList<CurrencyTotalsDto> TotalsByCurrency(IEnumerable<Invoice> invoices, DateOnly today) =>
         invoices
+            .Where(i => i.State == InvoiceState.Issued)
             .GroupBy(i => i.Currency)
             .Select(g => new CurrencyTotalsDto(
                 g.Key,
@@ -52,7 +54,7 @@ public sealed class GetFinancialSummaryHandler(
         var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-11);
 
         var monthly = invoices
-            .Where(i => i.IssueDate >= firstMonth)
+            .Where(i => i.State == InvoiceState.Issued && i.IssueDate >= firstMonth)
             .GroupBy(i => (Month: $"{i.IssueDate:yyyy-MM}", i.Currency))
             .Select(g => new MonthlyTotalDto(g.Key.Month, g.Key.Currency, g.Sum(i => i.Total), g.Sum(i => Math.Min(i.AmountPaid, i.Total))))
             .OrderBy(m => m.Month)

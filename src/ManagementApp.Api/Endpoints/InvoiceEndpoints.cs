@@ -30,9 +30,15 @@ public static class InvoiceEndpoints
         group.MapPost("/", CreateInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesCreate))
             .WithSummary("Create an invoice");
         group.MapPut("/{id:int}", UpdateInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
-            .WithSummary("Update an invoice");
+            .WithSummary("Update a draft invoice (409 once issued)");
         group.MapDelete("/{id:int}", DeleteInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesDelete))
-            .WithSummary("Delete an invoice");
+            .WithSummary("Delete a draft invoice (409 once issued: void it instead)");
+        group.MapPost("/{id:int}/issue", IssueInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
+            .WithSummary("Issue a draft: it becomes final and payable");
+        group.MapPost("/{id:int}/void", VoidInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesDelete))
+            .WithSummary("Void an issued invoice, with a reason");
+        group.MapPut("/{id:int}/amount-paid", RecordAmountPaid).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
+            .WithSummary("Set the amount received on an issued invoice");
 
         return app;
     }
@@ -64,6 +70,18 @@ public static class InvoiceEndpoints
 
     private static async Task<Ok<InvoiceDto>> UpdateInvoice(
         int id, SaveInvoiceCommand command, UpdateInvoiceHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
+
+    private static async Task<Ok<InvoiceDto>> IssueInvoice(
+        int id, IssueInvoiceHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, cancellationToken));
+
+    private static async Task<Ok<InvoiceDto>> VoidInvoice(
+        int id, VoidInvoiceCommand command, VoidInvoiceHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
+
+    private static async Task<Ok<InvoiceDto>> RecordAmountPaid(
+        int id, RecordAmountPaidCommand command, RecordAmountPaidHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
 
     private static async Task<NoContent> DeleteInvoice(

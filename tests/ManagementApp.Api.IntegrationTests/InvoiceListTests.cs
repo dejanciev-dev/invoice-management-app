@@ -35,10 +35,10 @@ public sealed class InvoiceListTests(ApiFactory factory) : IClassFixture<ApiFact
         var company = await factory.CreateTenantAsync();
         for (var n = 1; n <= 3; n++)
         {
-            await company.Client.CreateInvoiceAsync(NewInvoice($"PAID-{n}") with { AmountPaid = 301 });
+            await company.Client.CreateIssuedInvoiceAsync(NewInvoice($"PAID-{n}") with { AmountPaid = 301 });
         }
 
-        await company.Client.CreateInvoiceAsync(NewInvoice("OPEN-1"));
+        await company.Client.CreateIssuedInvoiceAsync(NewInvoice("OPEN-1"));
 
         var paid = await company.Client.GetAsync<PagedResult<InvoiceSummaryDto>>("/api/invoices?status=Paid&pageSize=2");
 
@@ -55,9 +55,10 @@ public sealed class InvoiceListTests(ApiFactory factory) : IClassFixture<ApiFact
 
         await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}", NewInvoice("INV-001") with
         {
-            Items = [new InvoiceItemInput("Design", 4, 80), new InvoiceItemInput("Hosting", 1, 30)],
-            AmountPaid = 350
+            Items = [new InvoiceItemInput("Design", 4, 80), new InvoiceItemInput("Hosting", 1, 30)]
         });
+        await company.Client.IssueInvoiceAsync(invoice.Id);
+        await company.Client.PutJsonAsync($"/api/invoices/{invoice.Id}/amount-paid", new RecordAmountPaidCommand(350));
 
         var summary = (await company.Client.GetInvoicesAsync("/api/invoices")).ShouldHaveSingleItem();
         summary.Total.ShouldBe(350m);
@@ -71,10 +72,10 @@ public sealed class InvoiceListTests(ApiFactory factory) : IClassFixture<ApiFact
     {
         var company = await factory.CreateTenantAsync();
         // Due 2026-03-31 (not overdue on 2026-03-15), total 301.00 each.
-        await company.Client.CreateInvoiceAsync(NewInvoice("EUR-OPEN"));
-        await company.Client.CreateInvoiceAsync(NewInvoice("EUR-PARTLY") with { AmountPaid = 100 });
-        await company.Client.CreateInvoiceAsync(NewInvoice("EUR-PAID") with { AmountPaid = 301 });
-        await company.Client.CreateInvoiceAsync(NewInvoice("USD-LATE") with
+        await company.Client.CreateIssuedInvoiceAsync(NewInvoice("EUR-OPEN"));
+        await company.Client.CreateIssuedInvoiceAsync(NewInvoice("EUR-PARTLY") with { AmountPaid = 100 });
+        await company.Client.CreateIssuedInvoiceAsync(NewInvoice("EUR-PAID") with { AmountPaid = 301 });
+        await company.Client.CreateIssuedInvoiceAsync(NewInvoice("USD-LATE") with
         {
             Currency = "USD",
             IssueDate = ApiFactory.Today.AddDays(-40),

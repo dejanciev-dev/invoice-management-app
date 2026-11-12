@@ -159,8 +159,8 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         var mine = await factory.CreateTenantAsync();
         var theirs = await factory.CreateTenantAsync();
         var overdue = NewInvoice("x") with { IssueDate = ApiFactory.Today.AddDays(-40), DueDate = ApiFactory.Today.AddDays(-10) };
-        await mine.Client.CreateInvoiceAsync(overdue with { InvoiceNumber = "MINE-LATE" });
-        await theirs.Client.CreateInvoiceAsync(overdue with { InvoiceNumber = "THEIRS-LATE" });
+        await mine.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "MINE-LATE" });
+        await theirs.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "THEIRS-LATE" });
 
         await factory.Services.GetRequiredService<OverdueInvoiceReminderJob>().RunAsync(Ct);
 

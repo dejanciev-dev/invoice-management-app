@@ -21,8 +21,8 @@ public sealed class TenantTimeZoneTests(ApiFactory factory) : IClassFixture<ApiF
         var utcCompany = await factory.CreateTenantAsync();
         var hawaiiCompany = await CreateCompanyInAsync("Pacific/Honolulu");
 
-        var inUtc = await utcCompany.Client.CreateInvoiceAsync(DueOn(DueYesterdayInUtc));
-        var inHawaii = await hawaiiCompany.Client.CreateInvoiceAsync(DueOn(DueYesterdayInUtc));
+        var inUtc = await utcCompany.Client.CreateIssuedInvoiceAsync(DueOn(DueYesterdayInUtc));
+        var inHawaii = await hawaiiCompany.Client.CreateIssuedInvoiceAsync(DueOn(DueYesterdayInUtc));
 
         inUtc.Status.ShouldBe(InvoiceStatus.Overdue);
         inHawaii.Status.ShouldBe(InvoiceStatus.Unpaid);
@@ -34,7 +34,7 @@ public sealed class TenantTimeZoneTests(ApiFactory factory) : IClassFixture<ApiF
     public async Task ReportsAndExports_UseTheCompanysDate()
     {
         var hawaiiCompany = await CreateCompanyInAsync("Pacific/Honolulu");
-        await hawaiiCompany.Client.CreateInvoiceAsync(DueOn(DueYesterdayInUtc));
+        await hawaiiCompany.Client.CreateIssuedInvoiceAsync(DueOn(DueYesterdayInUtc));
 
         var summary = await hawaiiCompany.Client.GetAsync<FinancialSummaryDto>("/api/reports/summary");
         var export = await hawaiiCompany.Client.GetAsync("/api/invoices/export", Ct);
@@ -49,7 +49,7 @@ public sealed class TenantTimeZoneTests(ApiFactory factory) : IClassFixture<ApiF
     public async Task ChangingTheTimeZone_TakesEffectImmediately()
     {
         var company = await CreateCompanyInAsync("Pacific/Honolulu");
-        var invoice = await company.Client.CreateInvoiceAsync(DueOn(DueYesterdayInUtc));
+        var invoice = await company.Client.CreateIssuedInvoiceAsync(DueOn(DueYesterdayInUtc));
 
         await SetTimeZoneAsync(company, "Europe/Skopje");
 
