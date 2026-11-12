@@ -1,5 +1,6 @@
 using FluentValidation;
 using ManagementApp.Application.Common.Exceptions;
+using ManagementApp.Domain.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,6 +29,12 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problemDe
                 Status = StatusCodes.Status403Forbidden,
                 Title = "You are not allowed to do this.",
                 Detail = forbidden.Message
+            },
+            DomainRuleException rule => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "This is not possible in the current state.",
+                Detail = rule.Message
             },
             UnauthorizedAccessException => new ProblemDetails
             {

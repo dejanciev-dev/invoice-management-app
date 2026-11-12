@@ -1,6 +1,8 @@
 using FluentValidation;
 using FluentValidation.Results;
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Exceptions;
+using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Customers;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Domain.Entities;
@@ -42,6 +44,13 @@ internal static class InvoiceQueryExtensions
                 .Where(c => c.Id == id)
                 .Select(c => new InvoiceCustomerDto(c.Id, c.Name, c.DeletedAt != null))
                 .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>The full invoice as returned by the API, with its status as of the tenant's today.</summary>
+    public static async Task<InvoiceDto> ToDtoAsync(
+        this Invoice invoice, IApplicationDbContext context, TenantClock tenantClock, CancellationToken cancellationToken) =>
+        invoice.ToDto(
+            await tenantClock.TodayAsync(cancellationToken),
+            await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
 
     public static async Task EnsureInvoiceNumberIsUniqueAsync(
         this IQueryable<Invoice> invoices, string invoiceNumber, int? excludeId, CancellationToken cancellationToken)

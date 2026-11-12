@@ -19,6 +19,7 @@ public sealed class UpdateInvoiceHandler(
         await validator.ValidateAndThrowAsync(command, cancellationToken);
 
         var invoice = await context.Invoices.GetAsync(id, cancellationToken);
+        invoice.EnsureEditable();
         await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
         await context.Invoices.EnsureInvoiceNumberIsUniqueAsync(command.InvoiceNumber, excludeId: id, cancellationToken);
         await context.Customers.EnsureCustomerCanBeUsedAsync(command.CustomerId, invoice.CustomerId, cancellationToken);
@@ -46,8 +47,6 @@ public sealed class UpdateInvoiceHandler(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return invoice.ToDto(
-            await tenantClock.TodayAsync(cancellationToken),
-            await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
+        return await invoice.ToDtoAsync(context, tenantClock, cancellationToken);
     }
 }

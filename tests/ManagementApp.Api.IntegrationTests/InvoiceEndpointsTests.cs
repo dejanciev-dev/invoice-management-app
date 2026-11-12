@@ -47,7 +47,9 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         invoice.TaxAmount.ShouldBe(54.18m);
         invoice.Total.ShouldBe(325.08m);
         invoice.BalanceDue.ShouldBe(275.08m);
-        invoice.Status.ShouldBe(InvoiceStatus.PartiallyPaid);
+        invoice.Status.ShouldBe(InvoiceStatus.Draft);
+        invoice.State.ShouldBe(InvoiceState.Draft);
+        invoice.IssuedAt.ShouldBeNull();
     }
 
     [Fact]
@@ -144,19 +146,21 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     public async Task GetInvoices_FiltersBySearchAndStatus()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        await CreateAsync(client, NewInvoice("INV-001") with { To = "Globex", AmountPaid = 301 });
-        await CreateAsync(client, NewInvoice("INV-002") with { To = "Initech", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) });
+        await client.CreateIssuedInvoiceAsync(NewInvoice("INV-001") with { To = "Globex", AmountPaid = 301 });
+        await client.CreateIssuedInvoiceAsync(NewInvoice("INV-002") with { To = "Initech", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) });
         await CreateAsync(client, NewInvoice("INV-003") with { To = "Initech" });
 
         var all = await client.GetInvoicesAsync("/api/invoices");
         var initech = await client.GetInvoicesAsync("/api/invoices?search=Initech");
         var overdue = await client.GetInvoicesAsync("/api/invoices?status=Overdue");
         var paid = await client.GetInvoicesAsync("/api/invoices?status=Paid");
+        var drafts = await client.GetInvoicesAsync("/api/invoices?status=Draft");
 
         all!.Count.ShouldBe(3);
         initech!.Select(i => i.InvoiceNumber).ShouldBe(["INV-003", "INV-002"], ignoreOrder: true);
         overdue.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-002");
         paid.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-001");
+        drafts.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-003");
     }
 
     [Fact]

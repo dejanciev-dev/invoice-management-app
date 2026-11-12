@@ -26,6 +26,10 @@ public static class InvoiceMappings
         invoice.Total,
         invoice.BalanceDue,
         invoice.GetStatus(today),
+        invoice.State,
+        invoice.IssuedAt,
+        invoice.VoidedAt,
+        invoice.VoidReason,
         customer);
 
     public static InvoiceSummaryDto ToSummaryDto(this Invoice invoice, DateOnly today) => new(

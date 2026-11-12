@@ -53,8 +53,6 @@ public sealed class CreateInvoiceHandler(
             Details = new { invoice.InvoiceNumber, invoice.CustomerId, invoice.Currency, invoice.Total }
         }, cancellationToken);
 
-        return invoice.ToDto(
-            await tenantClock.TodayAsync(cancellationToken),
-            await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
+        return await invoice.ToDtoAsync(context, tenantClock, cancellationToken);
     }
 }

@@ -12,8 +12,6 @@ public sealed class GetInvoiceHandler(IApplicationDbContext context, TenantClock
             .AsNoTracking()
             .GetAsync(id, cancellationToken);
 
-        return invoice.ToDto(
-            await tenantClock.TodayAsync(cancellationToken),
-            await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
+        return await invoice.ToDtoAsync(context, tenantClock, cancellationToken);
     }
 }

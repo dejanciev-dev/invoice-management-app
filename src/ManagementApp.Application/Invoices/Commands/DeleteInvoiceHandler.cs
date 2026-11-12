@@ -13,6 +13,7 @@ public sealed class DeleteInvoiceHandler(
     public async Task HandleAsync(int id, CancellationToken cancellationToken)
     {
         var invoice = await context.Invoices.GetAsync(id, cancellationToken);
+        invoice.EnsureDeletable();
         await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
 
         context.Invoices.Remove(invoice);

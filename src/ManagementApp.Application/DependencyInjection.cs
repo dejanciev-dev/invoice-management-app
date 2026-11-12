@@ -31,6 +31,9 @@ public static class DependencyInjection
         services.AddScoped<CreateInvoiceHandler>();
         services.AddScoped<UpdateInvoiceHandler>();
         services.AddScoped<DeleteInvoiceHandler>();
+        services.AddScoped<IssueInvoiceHandler>();
+        services.AddScoped<VoidInvoiceHandler>();
+        services.AddScoped<RecordAmountPaidHandler>();
 
         services.AddScoped<GetCustomersHandler>();
         services.AddScoped<GetCustomerHandler>();

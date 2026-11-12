@@ -24,6 +24,10 @@ public sealed record InvoiceDto(
     decimal Total,
     decimal BalanceDue,
     InvoiceStatus Status,
+    InvoiceState State,
+    DateTimeOffset? IssuedAt,
+    DateTimeOffset? VoidedAt,
+    string? VoidReason,
     InvoiceCustomerDto? Customer);
 
 /// <summary>The saved customer an invoice was made for. <c>IsDeleted</c> customers are still shown, but not linked to.</summary>

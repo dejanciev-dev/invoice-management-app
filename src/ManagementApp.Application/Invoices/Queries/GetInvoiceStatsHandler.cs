@@ -1,5 +1,6 @@
 using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagementApp.Application.Invoices.Queries;
@@ -14,7 +15,12 @@ public sealed record CurrencyInvoiceStatsDto(
     int OverdueCount,
     decimal Overdue);
 
-public sealed record InvoiceStatsDto(int InvoiceCount, int OpenCount, int OverdueCount, IReadOnlyList<CurrencyInvoiceStatsDto> Currencies);
+/// <summary>
+/// The figures cover issued invoices only: drafts are not owed yet and void invoices no longer are. Drafts are counted
+/// separately so the dashboard can point at unfinished work.
+/// </summary>
+public sealed record InvoiceStatsDto(
+    int InvoiceCount, int OpenCount, int OverdueCount, int DraftCount, IReadOnlyList<CurrencyInvoiceStatsDto> Currencies);
 
 /// <summary>The invoice dashboard tiles, aggregated in SQL from the stored totals.</summary>
 public sealed class GetInvoiceStatsHandler(IApplicationDbContext context, TenantClock tenantClock)
@@ -24,6 +30,7 @@ public sealed class GetInvoiceStatsHandler(IApplicationDbContext context, Tenant
         var today = await tenantClock.TodayAsync(cancellationToken);
 
         var currencies = await context.Invoices.AsNoTracking()
+            .WhereIssued()
             .GroupBy(i => i.Currency)
             .Select(g => new CurrencyInvoiceStatsDto(
                 g.Key,
@@ -39,11 +46,14 @@ public sealed class GetInvoiceStatsHandler(IApplicationDbContext context, Tenant
                     : 0m)))
             .ToListAsync(cancellationToken);
 
+        var draftCount = await context.Invoices.CountAsync(i => i.State == InvoiceState.Draft, cancellationToken);
+
         var ordered = currencies.OrderBy(c => c.Currency).ToList();
         return new InvoiceStatsDto(
             ordered.Sum(c => c.InvoiceCount),
             ordered.Sum(c => c.OpenCount),
             ordered.Sum(c => c.OverdueCount),
+            draftCount,
             ordered);
     }
 }

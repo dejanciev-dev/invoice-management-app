@@ -32,6 +32,20 @@ internal static class TestData
         return await response.ReadAsync<InvoiceDto>();
     }
 
+    /// <summary>Creates an invoice and issues it, so it is payable and counts in statuses, statistics and reminders.</summary>
+    public static async Task<InvoiceDto> CreateIssuedInvoiceAsync(this HttpClient client, string number) =>
+        await client.CreateIssuedInvoiceAsync(NewInvoice(number));
+
+    public static async Task<InvoiceDto> CreateIssuedInvoiceAsync(this HttpClient client, SaveInvoiceCommand command) =>
+        await client.IssueInvoiceAsync((await client.CreateInvoiceAsync(command)).Id);
+
+    public static async Task<InvoiceDto> IssueInvoiceAsync(this HttpClient client, int id)
+    {
+        var response = await client.PostAsync($"/api/invoices/{id}/issue", content: null, Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return await response.ReadAsync<InvoiceDto>();
+    }
+
     public static SaveCustomerCommand NewCustomer(string name) => new()
     {
         Name = name,
