@@ -63,9 +63,15 @@ public class Invoice : AuditableEntity, ITenantEntity
 
     public TaxType TaxType { get; set; }
 
-    public decimal AmountPaid { get; set; }
+    /// <summary>The sum of <see cref="Payments"/>, kept as a column so lists and filters can use it in SQL.</summary>
+    public decimal AmountPaid { get; private set; }
 
     public List<InvoiceItem> Items { get; } = [];
+
+    private readonly List<Payment> _payments = [];
+
+    /// <summary>Money received, oldest first. Changed only by <see cref="RecordPayment"/> and <see cref="RemovePayment"/>.</summary>
+    public IReadOnlyList<Payment> Payments => _payments;
 
     public decimal Subtotal => Items.Sum(i => i.Amount);
 
@@ -191,19 +197,55 @@ public class Invoice : AuditableEntity, ITenantEntity
     }
 
     /// <summary>
-    /// Records how much of an issued invoice has been paid. Drafts carry the amount in their editable fields, and void
-    /// invoices are closed.
+    /// Records money received on an issued invoice. A payment cannot be more than what is still due, nor dated after
+    /// <paramref name="today"/> (the company's date). Drafts are not payable yet and void invoices no longer are.
     /// </summary>
-    public void RecordAmountPaid(decimal amountPaid)
+    public Payment RecordPayment(
+        decimal amount, DateOnly date, PaymentMethod method, string? reference, string? notes, DateOnly today)
+    {
+        EnsurePaymentsCanChange();
+
+        if (amount <= 0)
+        {
+            throw new DomainRuleException("A payment must be more than zero.");
+        }
+
+        if (amount > BalanceDue)
+        {
+            throw new DomainRuleException(
+                FormattableString.Invariant($"The payment of {amount:0.00} {Currency} is more than the {BalanceDue:0.00} {Currency} still due."));
+        }
+
+        if (date > today)
+        {
+            throw new DomainRuleException("A payment cannot be dated in the future.");
+        }
+
+        var payment = new Payment(TenantId, amount, date, method, reference, notes);
+        _payments.Add(payment);
+        AmountPaid = _payments.Sum(p => p.Amount);
+        return payment;
+    }
+
+    /// <summary>Removes a payment recorded by mistake. The invoice's balance and status follow.</summary>
+    public Payment RemovePayment(int paymentId)
+    {
+        EnsurePaymentsCanChange();
+
+        var payment = _payments.SingleOrDefault(p => p.Id == paymentId)
+            ?? throw new DomainRuleException($"Invoice {InvoiceNumber} has no payment {paymentId}.");
+        _payments.Remove(payment);
+        AmountPaid = _payments.Sum(p => p.Amount);
+        return payment;
+    }
+
+    private void EnsurePaymentsCanChange()
     {
         if (State != InvoiceState.Issued)
         {
             throw new DomainRuleException(
                 $"Payments can only be recorded on issued invoices; this one is {Describe(State)}.");
         }
-
-        ArgumentOutOfRangeException.ThrowIfNegative(amountPaid);
-        AmountPaid = amountPaid;
     }
 
     private static string Describe(InvoiceState state) => state switch
