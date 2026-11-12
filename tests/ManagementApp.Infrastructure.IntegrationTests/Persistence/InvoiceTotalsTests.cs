@@ -87,25 +87,26 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task TheSqlStatusFilter_AgreesWithTheDomainForEveryCombination()
     {
-        // Every combination of draft / issued / void, paid / part-paid / unpaid, and no, past, today's and
+        // Every combination of draft / issued / void, payments and credit notes, and no, past, today's and
         // future due dates.
         InvoiceState[] states = [InvoiceState.Draft, InvoiceState.Issued, InvoiceState.Void];
         DateOnly?[] dueDates = [null, Today.AddDays(-1), Today, Today.AddDays(1)];
-        decimal[] payments = [0m, 40m, 100m];
+        // (paid, credited) on a total of 100: nothing, part paid, part credited, both, fully paid, fully credited, mixed.
+        (decimal Paid, decimal Credited)[] amounts = [(0, 0), (40, 0), (0, 40), (40, 30), (100, 0), (0, 100), (60, 40)];
         foreach (var state in states)
         {
             foreach (var dueDate in dueDates)
             {
-                foreach (var paid in payments)
+                foreach (var (paid, credited) in amounts)
                 {
-                    if (state == InvoiceState.Draft && paid > 0)
+                    if ((state == InvoiceState.Draft && paid + credited > 0) || (state == InvoiceState.Void && credited > 0))
                     {
-                        continue; // drafts cannot be paid
+                        continue; // drafts take no payments or credits, and credited invoices cannot be voided
                     }
 
                     var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
                     invoice.DueDate = dueDate;
-                    MoveTo(invoice, state, paid);
+                    MoveTo(invoice, state, paid, credited);
                     Context.Invoices.Add(invoice);
                 }
             }
@@ -143,7 +144,7 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
         stored.VoidReason.ShouldBe("Duplicate");
     }
 
-    private static void MoveTo(Invoice invoice, InvoiceState state, decimal paid = 0)
+    private static void MoveTo(Invoice invoice, InvoiceState state, decimal paid = 0, decimal credited = 0)
     {
         var now = new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
         if (state != InvoiceState.Draft)
@@ -154,6 +155,11 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
         if (paid > 0)
         {
             invoice.RecordPayment(paid, Today, PaymentMethod.BankTransfer, null, null, Today);
+        }
+
+        if (credited > 0)
+        {
+            invoice.IssueCreditNote($"CN-{Guid.NewGuid():N}", credited, Today, "Test", Today);
         }
 
         if (state == InvoiceState.Void)

@@ -28,6 +28,7 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.OwnsOne(t => t.InvoiceSettings, settings =>
         {
             settings.Property(s => s.NumberPrefix).HasMaxLength(20).IsRequired();
+            settings.Property(s => s.CreditNotePrefix).HasMaxLength(20).IsRequired();
             settings.Property(s => s.DefaultTaxRate).HasPrecision(5, 2);
             settings.Property(s => s.TaxLabel).HasMaxLength(20).IsRequired();
             settings.Property(s => s.DefaultNotes).HasMaxLength(2000);

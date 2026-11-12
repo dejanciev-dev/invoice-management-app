@@ -23,6 +23,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.Discount).HasPrecision(18, 2);
         builder.Property(i => i.Tax).HasPrecision(18, 2);
         builder.Property(i => i.AmountPaid).HasPrecision(18, 2);
+        builder.Property(i => i.CreditedAmount).HasPrecision(18, 2);
         builder.Property(i => i.DiscountType).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.TaxType).HasConversion<string>().HasMaxLength(20);
 
@@ -69,6 +70,13 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(i => i.Payments).AutoInclude().UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(i => i.CreditNotes)
+            .WithOne()
+            .HasForeignKey(c => c.InvoiceId)
+            .OnDelete(DeleteBehavior.Cascade); // only drafts can be deleted, and drafts have no credit notes
+
+        builder.Navigation(i => i.CreditNotes).AutoInclude().UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Moved on by ApplicationDbContext whenever the invoice row changes, so two people changing the same invoice at
         // once (e.g. recording payments) cannot overwrite each other: the second save fails instead.

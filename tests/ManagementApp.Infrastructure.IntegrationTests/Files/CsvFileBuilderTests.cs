@@ -14,8 +14,8 @@ public sealed class CsvFileBuilderTests
 
         var lines = csv.TrimEnd().Split("\r\n");
         lines.Length.ShouldBe(2);
-        lines[0].ShouldBe("InvoiceNumber,To,IssueDate,DueDate,Currency,Subtotal,Discount,Tax,Total,AmountPaid,BalanceDue,Status");
-        lines[1].ShouldBe("INV-001,Globex Corporation,2026-03-01,2026-03-31,EUR,301.00,30.10,54.18,325.08,50.00,275.08,PartiallyPaid");
+        lines[0].ShouldBe("InvoiceNumber,To,IssueDate,DueDate,Currency,Subtotal,Discount,Tax,Total,AmountPaid,Credited,BalanceDue,Status");
+        lines[1].ShouldBe("INV-001,Globex Corporation,2026-03-01,2026-03-31,EUR,301.00,30.10,54.18,325.08,50.00,25.00,250.08,PartiallyPaid");
     }
 
     [Fact]
@@ -56,6 +56,7 @@ public sealed class CsvFileBuilderTests
         Tax: 54.18m,
         Total: 325.08m,
         AmountPaid: 50.00m,
-        BalanceDue: 275.08m,
+        Credited: 25.00m,
+        BalanceDue: 250.08m,
         InvoiceStatus.PartiallyPaid);
 }
