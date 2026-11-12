@@ -25,6 +25,8 @@ public static class InvoiceEndpoints
             .WithSummary("Invoice counts and outstanding, overdue and billed amounts per currency");
         group.MapGet("/export", ExportInvoices).RequireAuthorization(Policies.Has(Permission.InvoicesExport))
             .WithSummary("Download all invoices as CSV");
+        group.MapGet("/{id:int}/pdf", GetInvoicePdf).RequireAuthorization(Policies.Has(Permission.InvoicesView))
+            .WithSummary("Download the invoice as a PDF (issued invoices: the stored copy made when issued)");
         group.MapGet("/{id:int}", GetInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesView))
             .WithName(GetInvoiceRoute).WithSummary("Get an invoice with its items");
         group.MapPost("/", CreateInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesCreate))
@@ -59,6 +61,13 @@ public static class InvoiceEndpoints
     {
         var file = await handler.HandleAsync(cancellationToken);
         return TypedResults.File(file, "text/csv", $"invoices-{await tenantClock.TodayAsync(cancellationToken):yyyy-MM-dd}.csv");
+    }
+
+    private static async Task<FileStreamHttpResult> GetInvoicePdf(
+        int id, GetInvoicePdfHandler handler, CancellationToken cancellationToken)
+    {
+        var pdf = await handler.HandleAsync(id, cancellationToken);
+        return TypedResults.File(pdf.Content, "application/pdf", pdf.FileName); // the stream is disposed by the result
     }
 
     private static async Task<Ok<InvoiceDto>> GetInvoice(

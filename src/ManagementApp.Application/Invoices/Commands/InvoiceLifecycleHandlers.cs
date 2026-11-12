@@ -6,6 +6,7 @@ using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ManagementApp.Application.Invoices.Commands;
 
@@ -23,6 +24,8 @@ public sealed class IssueInvoiceHandler(
     SubscriptionGuard subscriptionGuard,
     IAuditLogger auditLogger,
     TimeProvider timeProvider,
+    InvoicePdfService pdfs,
+    ILogger<IssueInvoiceHandler> logger,
     TenantClock tenantClock)
 {
     public async Task<InvoiceDto> HandleAsync(int id, CancellationToken cancellationToken)
@@ -53,6 +56,17 @@ public sealed class IssueInvoiceHandler(
 
             await context.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
+
+        // The PDF is made now, so it shows the company's details and branding as they were when the invoice was issued.
+        // The invoice is issued either way; if this fails, the PDF is made on its first download instead.
+        try
+        {
+            await pdfs.StoreIssuedAsync(invoice, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e, "Could not store the PDF of invoice {InvoiceId}; it will be made on first download.", invoice.Id);
+        }
 
         return await invoice.ToDtoAsync(context, tenantClock, cancellationToken);
     }
