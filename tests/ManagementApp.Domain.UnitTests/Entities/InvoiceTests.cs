@@ -67,19 +67,22 @@ public class InvoiceTests
     }
 
     [Fact]
-    public void BalanceDue_SubtractsAmountPaid()
+    public void BalanceDue_SubtractsThePayments()
     {
-        var invoice = CreateInvoice(Item(1, 1000m));
-        invoice.AmountPaid = 250m;
+        var invoice = IssuedInvoice(Item(1, 1000m));
+        Pay(invoice, 250m);
+        Pay(invoice, 100m);
 
-        invoice.BalanceDue.ShouldBe(750m);
+        invoice.AmountPaid.ShouldBe(350m);
+        invoice.BalanceDue.ShouldBe(650m);
+        invoice.Payments.Select(p => p.Amount).ShouldBe([250m, 100m]);
     }
 
     [Theory]
     [InlineData(0, null, InvoiceStatus.Unpaid)]
     [InlineData(400, null, InvoiceStatus.PartiallyPaid)]
     [InlineData(1000, null, InvoiceStatus.Paid)]
-    [InlineData(1200, -10, InvoiceStatus.Paid)]
+    [InlineData(1000, -10, InvoiceStatus.Paid)]
     [InlineData(0, -1, InvoiceStatus.Overdue)]
     [InlineData(400, -1, InvoiceStatus.Overdue)]
     [InlineData(0, 0, InvoiceStatus.Unpaid)]
@@ -88,17 +91,19 @@ public class InvoiceTests
         var invoice = CreateInvoice(Item(1, 1000m));
         invoice.DueDate = dueInDays is { } days ? Today.AddDays(days) : null;
         invoice.Issue(Now, "INV-001");
-        invoice.RecordAmountPaid(amountPaid);
+        if (amountPaid > 0)
+        {
+            Pay(invoice, amountPaid);
+        }
 
         invoice.GetStatus(Today).ShouldBe(expected);
     }
 
     [Fact]
-    public void ANewInvoice_IsAnEditableDraft_WhateverItsPaymentsAndDueDate()
+    public void ANewInvoice_IsAnEditableDraft_WhateverItsDueDate()
     {
         var invoice = CreateInvoice(Item(1, 1000m));
         invoice.DueDate = Today.AddDays(-30);
-        invoice.AmountPaid = 400;
 
         invoice.State.ShouldBe(InvoiceState.Draft);
         invoice.InvoiceNumber.ShouldBeNull();
@@ -145,7 +150,7 @@ public class InvoiceTests
         invoice.VoidReason.ShouldBe("Billed to the wrong customer");
         invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Void);
         Should.Throw<DomainRuleException>(() => invoice.Void(Now, "again")).Message.ShouldContain("already void");
-        Should.Throw<DomainRuleException>(() => invoice.RecordAmountPaid(10));
+        Should.Throw<DomainRuleException>(() => Pay(invoice, 10));
         Should.Throw<DomainRuleException>(invoice.EnsureEditable);
         Should.Throw<DomainRuleException>(invoice.EnsureDeletable);
     }
@@ -162,16 +167,61 @@ public class InvoiceTests
     }
 
     [Fact]
-    public void RecordAmountPaid_IsOnlyForIssuedInvoices()
+    public void Payments_AreOnlyForIssuedInvoices()
     {
         var invoice = CreateInvoice(Item(1, 1000m));
-        Should.Throw<DomainRuleException>(() => invoice.RecordAmountPaid(100));
+        Should.Throw<DomainRuleException>(() => Pay(invoice, 100)).Message.ShouldContain("a draft");
 
         invoice.Issue(Now, "INV-001");
-        invoice.RecordAmountPaid(1000);
+        var payment = invoice.RecordPayment(1000, Today, PaymentMethod.Card, "  **** 4242 ", " ", Today);
 
         invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Paid);
-        Should.Throw<ArgumentOutOfRangeException>(() => invoice.RecordAmountPaid(-1));
+        payment.Date.ShouldBe(Today);
+        payment.Method.ShouldBe(PaymentMethod.Card);
+        payment.Reference.ShouldBe("**** 4242");
+        payment.Notes.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(0, 0, "more than zero")]
+    [InlineData(-5, 0, "more than zero")]
+    [InlineData(1000.01, 0, "more than the 1000.00 EUR still due")]
+    [InlineData(100, 1, "future")]
+    public void Payments_MustBePositive_NotMoreThanIsDue_AndNotInTheFuture(decimal amount, int daysAhead, string message)
+    {
+        var invoice = IssuedInvoice(Item(1, 1000m));
+
+        Should.Throw<DomainRuleException>(() => invoice.RecordPayment(amount, Today.AddDays(daysAhead), PaymentMethod.Cash, null, null, Today))
+            .Message.ShouldContain(message);
+        invoice.Payments.ShouldBeEmpty();
+        invoice.AmountPaid.ShouldBe(0m);
+    }
+
+    [Fact]
+    public void RemovingAPayment_PutsTheBalanceBack()
+    {
+        var invoice = IssuedInvoice(Item(1, 1000m));
+        var payment = Pay(invoice, 1000m);
+
+        invoice.RemovePayment(payment.Id);
+
+        invoice.Payments.ShouldBeEmpty();
+        invoice.BalanceDue.ShouldBe(1000m);
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Unpaid);
+        Should.Throw<DomainRuleException>(() => invoice.RemovePayment(payment.Id));
+    }
+
+    [Fact]
+    public void VoidInvoices_KeepTheirPayments_ButTheyCanNoLongerChange()
+    {
+        var invoice = IssuedInvoice(Item(1, 1000m));
+        var payment = Pay(invoice, 300m);
+
+        invoice.Void(Now, "Duplicate");
+
+        invoice.Payments.ShouldHaveSingleItem();
+        Should.Throw<DomainRuleException>(() => invoice.RemovePayment(payment.Id));
+        Should.Throw<DomainRuleException>(() => Pay(invoice, 100m));
     }
 
     [Fact]
@@ -197,6 +247,17 @@ public class InvoiceTests
         invoice.ReplaceItems(items);
         return invoice;
     }
+
+    private static Invoice IssuedInvoice(params InvoiceItem[] items)
+    {
+        var invoice = CreateInvoice(items);
+        invoice.Currency = "EUR";
+        invoice.Issue(Now, "INV-001");
+        return invoice;
+    }
+
+    private static Payment Pay(Invoice invoice, decimal amount) =>
+        invoice.RecordPayment(amount, Today, PaymentMethod.BankTransfer, null, null, Today);
 
     private static InvoiceItem Item(decimal quantity, decimal unitPrice) =>
         new() { Description = "Work", Quantity = quantity, UnitPrice = unitPrice };
