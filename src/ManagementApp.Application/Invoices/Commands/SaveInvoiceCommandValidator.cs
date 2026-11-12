@@ -7,7 +7,6 @@ public sealed class SaveInvoiceCommandValidator : AbstractValidator<SaveInvoiceC
 {
     public SaveInvoiceCommandValidator()
     {
-        RuleFor(v => v.InvoiceNumber).NotEmpty().MaximumLength(50);
         RuleFor(v => v.From).NotEmpty().MaximumLength(1000);
         RuleFor(v => v.To).NotEmpty().MaximumLength(1000);
         RuleFor(v => v.IssueDate).NotEmpty();

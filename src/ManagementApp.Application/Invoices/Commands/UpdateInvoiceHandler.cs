@@ -21,7 +21,6 @@ public sealed class UpdateInvoiceHandler(
         var invoice = await context.Invoices.GetAsync(id, cancellationToken);
         invoice.EnsureEditable();
         await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
-        await context.Invoices.EnsureInvoiceNumberIsUniqueAsync(command.InvoiceNumber, excludeId: id, cancellationToken);
         await context.Customers.EnsureCustomerCanBeUsedAsync(command.CustomerId, invoice.CustomerId, cancellationToken);
 
         var previousTotal = invoice.Total;

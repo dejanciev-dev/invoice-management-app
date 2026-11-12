@@ -1,5 +1,3 @@
-using FluentValidation;
-using FluentValidation.Results;
 using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Exceptions;
 using ManagementApp.Application.Common.Interfaces;
@@ -51,19 +49,4 @@ internal static class InvoiceQueryExtensions
         invoice.ToDto(
             await tenantClock.TodayAsync(cancellationToken),
             await context.Customers.GetInvoiceCustomerAsync(invoice.CustomerId, cancellationToken));
-
-    public static async Task EnsureInvoiceNumberIsUniqueAsync(
-        this IQueryable<Invoice> invoices, string invoiceNumber, int? excludeId, CancellationToken cancellationToken)
-    {
-        var number = invoiceNumber.Trim();
-        var taken = await invoices.AnyAsync(i => i.InvoiceNumber == number && i.Id != excludeId, cancellationToken);
-
-        if (taken)
-        {
-            throw new ValidationException(
-            [
-                new ValidationFailure(nameof(SaveInvoiceCommand.InvoiceNumber), $"Invoice number '{number}' is already in use.")
-            ]);
-        }
-    }
 }

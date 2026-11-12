@@ -3,10 +3,12 @@ using ManagementApp.Domain.Enums;
 
 namespace ManagementApp.Application.Invoices.Commands;
 
-/// <summary>The editable fields of an invoice, shared by the create and update use cases.</summary>
+/// <summary>
+/// The editable fields of a draft, shared by the create and update use cases. There is no invoice number: it is
+/// assigned when the invoice is issued.
+/// </summary>
 public sealed record SaveInvoiceCommand
 {
-    public string InvoiceNumber { get; init; } = string.Empty;
     /// <summary>A saved customer of the company, or null for a one-off client described only by <see cref="To"/>.</summary>
     public int? CustomerId { get; init; }
     public string From { get; init; } = string.Empty;
@@ -25,7 +27,6 @@ public sealed record SaveInvoiceCommand
 
     public void ApplyTo(Invoice invoice)
     {
-        invoice.InvoiceNumber = InvoiceNumber.Trim();
         invoice.From = From.Trim();
         invoice.CustomerId = CustomerId;
         invoice.To = To.Trim();

@@ -90,8 +90,8 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         var secondSession = await first.Client.GetAsync<SessionDto>("/api/me", second.TenantId);
 
         session.Tenants.Select(t => t.Id).ShouldBe([first.TenantId, second.TenantId], ignoreOrder: true);
-        inFirst.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("FIRST-1");
-        inSecond.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("SECOND-1");
+        inFirst.ShouldHaveSingleItem().To.ShouldBe("FIRST-1");
+        inSecond.ShouldHaveSingleItem().To.ShouldBe("SECOND-1");
         secondSession.ActiveTenant!.Role.ShouldBe(TenantRole.Accountant);
     }
 
@@ -130,14 +130,14 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
     {
         var mine = await factory.CreateTenantAsync();
         var theirs = await factory.CreateTenantAsync();
-        await mine.Client.CreateInvoiceAsync("MINE-1");
-        await theirs.Client.CreateInvoiceAsync("THEIRS-1");
+        var myInvoice = await mine.Client.CreateInvoiceAsync("MINE-1");
+        var theirInvoice = await theirs.Client.CreateInvoiceAsync("THEIRS-1");
 
         var logs = await mine.Client.GetAsync<PagedResult<AuditLogDto>>("/api/tenant/audit-logs");
 
         logs.Items.ShouldAllBe(a => a.TenantId == mine.TenantId);
-        logs.Items.ShouldContain(a => a.Action == "invoice.created" && a.Details!.Contains("MINE-1"));
-        logs.Items.ShouldNotContain(a => a.Details != null && a.Details.Contains("THEIRS-1"));
+        logs.Items.ShouldContain(a => a.Action == "invoice.created" && a.EntityId == myInvoice.Id.ToString());
+        logs.Items.ShouldNotContain(a => a.EntityType == "Invoice" && a.EntityId == theirInvoice.Id.ToString());
     }
 
     [Fact]
@@ -146,11 +146,12 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         var mine = await factory.CreateTenantAsync();
         var theirs = await factory.CreateTenantAsync();
 
-        var settings = await mine.Client.GetAsync<CurrentTenantDto>("/api/tenant");
-        await mine.Client.CreateInvoiceAsync(settings.NextInvoiceNumber);
+        var issued = await mine.Client.CreateIssuedInvoiceAsync("Globex");
 
+        issued.InvoiceNumber.ShouldBe("INV-0001");
         (await mine.Client.GetAsync<CurrentTenantDto>("/api/tenant")).NextInvoiceNumber.ShouldBe("INV-0002");
         (await theirs.Client.GetAsync<CurrentTenantDto>("/api/tenant")).NextInvoiceNumber.ShouldBe("INV-0001");
+        (await theirs.Client.CreateIssuedInvoiceAsync("Initech")).InvoiceNumber.ShouldBe("INV-0001");
     }
 
     [Fact]
@@ -159,18 +160,20 @@ public sealed class TenantIsolationTests(ApiFactory factory) : IClassFixture<Api
         var mine = await factory.CreateTenantAsync();
         var theirs = await factory.CreateTenantAsync();
         var overdue = NewInvoice("x") with { IssueDate = ApiFactory.Today.AddDays(-40), DueDate = ApiFactory.Today.AddDays(-10) };
-        await mine.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "MINE-LATE" });
-        await theirs.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "THEIRS-LATE" });
+        // Both companies number from INV-0001, so the reminders are told apart by how many invoices they list.
+        await mine.Client.CreateIssuedInvoiceAsync(overdue with { To = "MINE-LATE" });
+        await theirs.Client.CreateIssuedInvoiceAsync(overdue with { To = "THEIRS-LATE-1" });
+        await theirs.Client.CreateIssuedInvoiceAsync(overdue with { To = "THEIRS-LATE-2" });
 
         await factory.Services.GetRequiredService<OverdueInvoiceReminderJob>().RunAsync(Ct);
 
         var mineReminder = factory.Notifications.Last(n => n.TenantId == mine.TenantId);
         var theirsReminder = factory.Notifications.Last(n => n.TenantId == theirs.TenantId);
         mineReminder.To.ShouldBe(mine.Email);
-        mineReminder.Body.ShouldContain("MINE-LATE");
-        mineReminder.Body.ShouldNotContain("THEIRS-LATE");
-        theirsReminder.Body.ShouldContain("THEIRS-LATE");
-        theirsReminder.Body.ShouldNotContain("MINE-LATE");
+        mineReminder.Subject.ShouldBe("1 overdue invoice");
+        mineReminder.Body.ShouldStartWith("INV-0001:");
+        theirsReminder.To.ShouldBe(theirs.Email);
+        theirsReminder.Subject.ShouldBe("2 overdue invoices");
     }
 
     private static MultipartFormDataContent LogoUpload(byte[] bytes, string contentType)

@@ -22,7 +22,7 @@ public sealed class InvoiceCustomerTests(ApiFactory factory) : IClassFixture<Api
         created.Customer.ShouldBe(new InvoiceCustomerDto(globex.Id, "Globex", IsDeleted: false));
         (await tenant.Client.GetAsync<InvoiceDto>($"/api/invoices/{created.Id}")).Customer!.Id.ShouldBe(globex.Id);
         var globexInvoices = await tenant.Client.GetInvoicesAsync($"/api/invoices?customerId={globex.Id}");
-        globexInvoices.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-001");
+        globexInvoices.ShouldHaveSingleItem().To.ShouldBe("INV-001");
         (await tenant.Client.GetInvoicesAsync("/api/invoices")).Count.ShouldBe(2);
     }
 

@@ -26,7 +26,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
-        var response = await client.PostAsJsonAsync("/api/invoices", NewInvoice("INV-001") with
+        var response = await client.PostAsJsonAsync("/api/invoices", NewInvoice() with
         {
             Discount = 10,
             DiscountType = DiscountType.Percentage,
@@ -57,7 +57,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
-        var response = await client.PostAsJsonAsync("/api/invoices", NewInvoice("INV-001") with
+        var response = await client.PostAsJsonAsync("/api/invoices", NewInvoice() with
         {
             Currency = "euro",
             Items = [new InvoiceItemInput("", 0, 10)]
@@ -69,25 +69,12 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     }
 
     [Fact]
-    public async Task CreateInvoice_WithDuplicateNumber_ReturnsValidationProblem()
-    {
-        var client = await factory.CreateAuthenticatedClientAsync();
-        await CreateAsync(client, NewInvoice("INV-001"));
-
-        var response = await client.PostAsJsonAsync("/api/invoices", NewInvoice("INV-001"), ApiFactory.Json, CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var problem = await ReadAsync<ValidationProblemDetails>(response);
-        problem.Errors.ShouldContainKey("invoiceNumber");
-    }
-
-    [Fact]
     public async Task UpdateInvoice_ReplacesFieldsAndItems()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        var created = await CreateAsync(client, NewInvoice("INV-001"));
+        var created = await CreateAsync(client, NewInvoice());
 
-        var response = await client.PutAsJsonAsync($"/api/invoices/{created.Id}", NewInvoice("INV-001-A") with
+        var response = await client.PutAsJsonAsync($"/api/invoices/{created.Id}", NewInvoice() with
         {
             To = "Initech",
             Items = [new InvoiceItemInput("Design", 4, 80), new InvoiceItemInput("Hosting", 1, 30)]
@@ -95,7 +82,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var updated = await ReadAsync<InvoiceDto>(response);
-        updated.InvoiceNumber.ShouldBe("INV-001-A");
+        updated.InvoiceNumber.ShouldBeNull(); // still a draft
         updated.To.ShouldBe("Initech");
         updated.Items.Select(i => i.Description).ShouldBe(["Design", "Hosting"]);
         updated.Total.ShouldBe(350m);
@@ -105,7 +92,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     public async Task DeleteInvoice_RemovesIt()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        var created = await CreateAsync(client, NewInvoice("INV-001"));
+        var created = await CreateAsync(client, NewInvoice());
 
         var delete = await client.DeleteAsync($"/api/invoices/{created.Id}", CancellationToken);
         var get = await client.GetAsync($"/api/invoices/{created.Id}", CancellationToken);
@@ -119,11 +106,11 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     {
         var owner = await factory.CreateAuthenticatedClientAsync();
         var otherUser = await factory.CreateAuthenticatedClientAsync();
-        var created = await CreateAsync(owner, NewInvoice("INV-001"));
+        var created = await CreateAsync(owner, NewInvoice());
 
         var list = await otherUser.GetInvoicesAsync("/api/invoices");
         var get = await otherUser.GetAsync($"/api/invoices/{created.Id}", CancellationToken);
-        var update = await otherUser.PutAsJsonAsync($"/api/invoices/{created.Id}", NewInvoice("HIJACK"), ApiFactory.Json, CancellationToken);
+        var update = await otherUser.PutAsJsonAsync($"/api/invoices/{created.Id}", NewInvoice(), ApiFactory.Json, CancellationToken);
         var delete = await otherUser.DeleteAsync($"/api/invoices/{created.Id}", CancellationToken);
 
         list.ShouldBeEmpty();
@@ -133,41 +120,45 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     }
 
     [Fact]
-    public async Task OtherUsers_CanReuseTheSameInvoiceNumber()
+    public async Task EveryCompany_NumbersItsInvoicesFromOne()
     {
-        await CreateAsync(await factory.CreateAuthenticatedClientAsync(), NewInvoice("INV-001"));
+        var first = await (await factory.CreateAuthenticatedClientAsync()).CreateIssuedInvoiceAsync(NewInvoice());
+        var second = await (await factory.CreateAuthenticatedClientAsync()).CreateIssuedInvoiceAsync(NewInvoice());
 
-        var created = await CreateAsync(await factory.CreateAuthenticatedClientAsync(), NewInvoice("INV-001"));
-
-        created.InvoiceNumber.ShouldBe("INV-001");
+        first.InvoiceNumber.ShouldBe("INV-0001");
+        second.InvoiceNumber.ShouldBe("INV-0001");
     }
 
     [Fact]
     public async Task GetInvoices_FiltersBySearchAndStatus()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        await client.CreateIssuedInvoiceAsync(NewInvoice("INV-001") with { To = "Globex", AmountPaid = 301 });
-        await client.CreateIssuedInvoiceAsync(NewInvoice("INV-002") with { To = "Initech", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) });
-        await CreateAsync(client, NewInvoice("INV-003") with { To = "Initech" });
+        await client.CreateIssuedInvoiceAsync(NewInvoice() with { To = "Globex", AmountPaid = 301 }); // INV-0001
+        await client.CreateIssuedInvoiceAsync(NewInvoice() with { To = "Initech late", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) }); // INV-0002
+        await CreateAsync(client, NewInvoice() with { To = "Initech draft" });
 
         var all = await client.GetInvoicesAsync("/api/invoices");
         var initech = await client.GetInvoicesAsync("/api/invoices?search=Initech");
+        var byNumber = await client.GetInvoicesAsync("/api/invoices?search=0002");
         var overdue = await client.GetInvoicesAsync("/api/invoices?status=Overdue");
         var paid = await client.GetInvoicesAsync("/api/invoices?status=Paid");
         var drafts = await client.GetInvoicesAsync("/api/invoices?status=Draft");
 
         all!.Count.ShouldBe(3);
-        initech!.Select(i => i.InvoiceNumber).ShouldBe(["INV-003", "INV-002"], ignoreOrder: true);
-        overdue.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-002");
-        paid.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-001");
-        drafts.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-003");
+        initech!.Select(i => i.To).ShouldBe(["Initech draft", "Initech late"], ignoreOrder: true);
+        byNumber.ShouldHaveSingleItem().To.ShouldBe("Initech late");
+        overdue.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-0002");
+        paid.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("INV-0001");
+        var draft = drafts.ShouldHaveSingleItem();
+        draft.To.ShouldBe("Initech draft");
+        draft.InvoiceNumber.ShouldBeNull();
     }
 
     [Fact]
     public async Task ExportInvoices_ReturnsCsvFile()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        await CreateAsync(client, NewInvoice("INV-001"));
+        await client.CreateIssuedInvoiceAsync(NewInvoice());
 
         var response = await client.GetAsync("/api/invoices/export", CancellationToken);
 
@@ -178,7 +169,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         var lines = (await response.Content.ReadAsStringAsync(CancellationToken)).Trim().Split('\n');
         lines.Length.ShouldBe(2);
         lines[0].ShouldStartWith("InvoiceNumber,To,IssueDate,DueDate,Currency");
-        lines[1].ShouldStartWith("INV-001,Globex Corporation,2026-03-01,2026-03-31,EUR,301.00");
+        lines[1].ShouldStartWith("INV-0001,Globex Corporation,2026-03-01,2026-03-31,EUR,301.00");
     }
 
     [Fact]
@@ -199,9 +190,8 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
     }
 
-    private static SaveInvoiceCommand NewInvoice(string number) => new()
+    private static SaveInvoiceCommand NewInvoice() => new()
     {
-        InvoiceNumber = number,
         From = "Acme Ltd",
         To = "Globex Corporation",
         IssueDate = new DateOnly(2026, 3, 1),

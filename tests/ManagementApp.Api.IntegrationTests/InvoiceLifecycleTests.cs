@@ -52,7 +52,7 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
         (await edit.ReadAsync<ProblemDetails>()).Detail!.ShouldContain("Only drafts can be changed");
         delete.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         issueAgain.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        (await company.Client.GetAsync<InvoiceDto>($"/api/invoices/{draft.Id}")).To.ShouldBe("Globex Corporation");
+        (await company.Client.GetAsync<InvoiceDto>($"/api/invoices/{draft.Id}")).To.ShouldBe("INV-001");
     }
 
     [Fact]
@@ -105,9 +105,9 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
     {
         var company = await factory.CreateTenantAsync();
         var overdue = NewInvoice("x") with { IssueDate = ApiFactory.Today.AddDays(-40), DueDate = ApiFactory.Today.AddDays(-10) };
-        await company.Client.CreateInvoiceAsync(overdue with { InvoiceNumber = "DRAFT" });
-        await company.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "ISSUED" });
-        var toVoid = await company.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "VOID" });
+        await company.Client.CreateInvoiceAsync(overdue with { To = "DRAFT" });
+        await company.Client.CreateIssuedInvoiceAsync(overdue with { To = "ISSUED" });
+        var toVoid = await company.Client.CreateIssuedInvoiceAsync(overdue with { To = "VOID" });
         await company.Client.PostJsonAsync($"/api/invoices/{toVoid.Id}/void", new VoidInvoiceCommand("Duplicate"));
 
         var stats = await company.Client.GetAsync<InvoiceStatsDto>("/api/invoices/stats");
@@ -122,8 +122,8 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
         summary.Totals.ShouldHaveSingleItem().Overdue.ShouldBe(301m);
         summary.ByStatus.Single(s => s.Status == InvoiceStatus.Draft).Count.ShouldBe(1);
         summary.ByStatus.Single(s => s.Status == InvoiceStatus.Void).Count.ShouldBe(1);
-        overdueList.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("ISSUED");
-        voidList.ShouldHaveSingleItem().InvoiceNumber.ShouldBe("VOID");
+        overdueList.ShouldHaveSingleItem().To.ShouldBe("ISSUED");
+        voidList.ShouldHaveSingleItem().To.ShouldBe("VOID");
     }
 
     [Fact]
@@ -131,16 +131,16 @@ public sealed class InvoiceLifecycleTests(ApiFactory factory) : IClassFixture<Ap
     {
         var company = await factory.CreateTenantAsync();
         var overdue = NewInvoice("x") with { IssueDate = ApiFactory.Today.AddDays(-40), DueDate = ApiFactory.Today.AddDays(-10) };
-        await company.Client.CreateInvoiceAsync(overdue with { InvoiceNumber = "LATE-DRAFT" });
-        await company.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "LATE-ISSUED" });
-        var toVoid = await company.Client.CreateIssuedInvoiceAsync(overdue with { InvoiceNumber = "LATE-VOID" });
+        await company.Client.CreateInvoiceAsync(overdue with { To = "LATE-DRAFT" });
+        var issued = await company.Client.CreateIssuedInvoiceAsync(overdue with { To = "LATE-ISSUED" });
+        var toVoid = await company.Client.CreateIssuedInvoiceAsync(overdue with { To = "LATE-VOID" });
         await company.Client.PostJsonAsync($"/api/invoices/{toVoid.Id}/void", new VoidInvoiceCommand("Duplicate"));
 
         await factory.Services.GetRequiredService<OverdueInvoiceReminderJob>().RunAsync(Ct);
 
         var reminder = factory.Notifications.Last(n => n.TenantId == company.TenantId);
         reminder.Subject.ShouldBe("1 overdue invoice");
-        reminder.Body.ShouldContain("LATE-ISSUED");
+        reminder.Body.ShouldStartWith($"{issued.InvoiceNumber}:");
     }
 
     [Fact]
