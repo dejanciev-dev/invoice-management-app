@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiRequest, json, query, withTenant } from './client'
 import { tenantKeys } from './tenant'
-import type { Invoice, InvoiceStats, InvoiceStatus, InvoiceSummary, Paged, SaveInvoiceRequest } from './types'
+import type { Invoice, InvoiceStats, InvoiceStatus, InvoiceSummary, Paged, RecordPaymentRequest, SaveInvoiceRequest } from './types'
 
 export const INVOICE_PAGE_SIZE = 25
 
@@ -110,9 +110,16 @@ export function useVoidInvoice() {
   )
 }
 
-/** Sets how much has been received on an issued invoice. */
-export function useRecordAmountPaid() {
-  return useInvoiceTransition(({ id, amountPaid }: { id: number; amountPaid: number }) =>
-    apiRequest<Invoice>(`/invoices/${id}/amount-paid`, { method: 'PUT', ...json({ amountPaid }) }),
+/** Records money received on an issued invoice; the server refuses more than the balance due. */
+export function useRecordPayment() {
+  return useInvoiceTransition(({ id, payment }: { id: number; payment: RecordPaymentRequest }) =>
+    apiRequest<Invoice>(`/invoices/${id}/payments`, { method: 'POST', ...json(payment) }),
+  )
+}
+
+/** Removes a payment recorded by mistake. */
+export function useDeletePayment() {
+  return useInvoiceTransition(({ id, paymentId }: { id: number; paymentId: number }) =>
+    apiRequest<Invoice>(`/invoices/${id}/payments/${paymentId}`, { method: 'DELETE' }),
   )
 }

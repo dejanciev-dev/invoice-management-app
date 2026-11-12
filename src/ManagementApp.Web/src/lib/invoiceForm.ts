@@ -32,7 +32,6 @@ export const invoiceFormSchema = z
     discountType: adjustmentType,
     tax: amount('Tax'),
     taxType: adjustmentType,
-    amountPaid: amount('Amount paid'),
     notes: z.string().max(2000),
   })
   .refine((v) => !v.dueDate || v.dueDate >= v.issueDate, {
@@ -79,7 +78,6 @@ export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: Invoi
     discountType: 'Percentage',
     tax: defaults?.taxRate ?? 0,
     taxType: 'Percentage',
-    amountPaid: 0,
     notes: defaults?.notes ?? '',
   }
 }
@@ -98,7 +96,6 @@ export function invoiceToValues(invoice: Invoice): InvoiceFormValues {
     discountType: invoice.discountType,
     tax: invoice.tax,
     taxType: invoice.taxType,
-    amountPaid: invoice.amountPaid,
     notes: invoice.notes ?? '',
   }
 }
