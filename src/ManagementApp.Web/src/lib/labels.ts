@@ -77,6 +77,7 @@ const actionLabels: Record<string, string> = {
   'payment.recorded': 'Payment recorded',
   'payment.deleted': 'Payment deleted',
   'credit_note.issued': 'Credit note issued',
+  'email.retried': 'Email retried',
   'invoice.exported': 'Invoices exported',
   'impersonation.started': 'Impersonation started',
   'impersonation.ended': 'Impersonation ended',

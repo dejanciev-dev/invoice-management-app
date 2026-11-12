@@ -1,5 +1,25 @@
 export type AdjustmentType = 'Flat' | 'Percentage'
 
+export type EmailStatus = 'Pending' | 'Sent' | 'Failed'
+
+/** An email in the company's outbox and what happened to it. */
+export interface Email {
+  id: number
+  to: string
+  subject: string
+  status: EmailStatus
+  attempts: number
+  createdAt: string
+  sentAt: string | null
+  /** When a pending email will be (re)tried. */
+  nextAttemptAt: string | null
+  lastError: string | null
+  relatedEntityType: string | null
+  relatedEntityId: string | null
+  /** File names of the attachments. */
+  attachments: string[]
+}
+
 /** Drafts and void invoices show their state; issued invoices show their payment progress. */
 export type InvoiceStatus = 'Draft' | 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Credited' | 'Void'
 

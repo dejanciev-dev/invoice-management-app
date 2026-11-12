@@ -4,6 +4,7 @@ using ManagementApp.Application.Auditing;
 using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Application.Customers;
+using ManagementApp.Application.Emails;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
@@ -72,6 +73,10 @@ public static class DependencyInjection
 
         services.AddScoped<GetAuditLogsHandler>();
         services.AddScoped<GetFinancialSummaryHandler>();
+
+        services.AddScoped<EmailOutbox>();
+        services.AddScoped<GetEmailsHandler>();
+        services.AddScoped<RetryEmailHandler>();
 
         services.AddScoped<GetPlatformDashboardHandler>();
         services.AddScoped<GetTenantsHandler>();

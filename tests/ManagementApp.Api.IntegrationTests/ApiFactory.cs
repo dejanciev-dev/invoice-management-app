@@ -38,6 +38,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero));
 
+    /// <summary>What the email outbox handed to the mail server; set <see cref="CapturingEmailSender.FailWith"/> to make sending fail.</summary>
+    public CapturingEmailSender Emails { get; } = new();
+
     /// <summary>Every notification the app sent, in order.</summary>
     public ConcurrentQueue<TenantNotification> Notifications { get; } = new();
 
@@ -60,6 +63,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<INotificationSender>();
             services.AddSingleton<INotificationSender>(new CapturingNotificationSender(Notifications));
+
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
         });
     }
 
@@ -145,6 +151,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     }
 
     private sealed record AccessTokenResponse(string AccessToken);
+
+public sealed class CapturingEmailSender : IEmailSender
+{
+    public ConcurrentQueue<OutgoingEmail> Sent { get; } = new();
+
+    /// <summary>When set, every send fails with this message, like an unreachable mail server.</summary>
+    public string? FailWith { get; set; }
+
+    public Task<string?> SendAsync(OutgoingEmail email, CancellationToken cancellationToken)
+    {
+        if (FailWith is { } error)
+        {
+            throw new InvalidOperationException(error);
+        }
+
+        Sent.Enqueue(email);
+        return Task.FromResult<string?>($"<{Guid.NewGuid():N}@test>");
+    }
+}
 
     private sealed class CapturingNotificationSender(ConcurrentQueue<TenantNotification> sent) : INotificationSender
     {
