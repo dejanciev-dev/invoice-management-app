@@ -37,6 +37,7 @@ public static class AuditActions
     public const string InvoicePaymentChanged = "invoice.payment_changed";
     public const string PaymentRecorded = "payment.recorded";
     public const string PaymentDeleted = "payment.deleted";
+    public const string CreditNoteIssued = "credit_note.issued";
     public const string InvoicesExported = "invoice.exported";
 
     public const string CustomerCreated = "customer.created";

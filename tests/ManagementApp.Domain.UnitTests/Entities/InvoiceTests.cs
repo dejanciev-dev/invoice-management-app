@@ -225,6 +225,78 @@ public class InvoiceTests
     }
 
     [Fact]
+    public void ACreditNote_ReducesTheBalance_AndSplitsOutItsTax()
+    {
+        var invoice = TaxedInvoice(); // 1000 + 20% tax = 1200
+
+        var credit = invoice.IssueCreditNote("CN-0001", 300m, Today, " Returned one licence ", Today);
+
+        credit.Number.ShouldBe("CN-0001");
+        credit.Reason.ShouldBe("Returned one licence");
+        credit.Amount.ShouldBe(300m);
+        credit.TaxAmount.ShouldBe(50m);
+        credit.NetAmount.ShouldBe(250m);
+        invoice.CreditedAmount.ShouldBe(300m);
+        invoice.BalanceDue.ShouldBe(900m);
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Unpaid);
+    }
+
+    [Fact]
+    public void CreditingEverythingLeft_IsCredited_AndReversesExactlyTheInvoicesTax()
+    {
+        var invoice = TaxedInvoice();
+        invoice.IssueCreditNote("CN-0001", 100.01m, Today, "Discount", Today); // tax 16.67 after rounding
+        invoice.IssueCreditNote("CN-0002", 100.01m, Today, "Discount", Today);
+
+        var last = invoice.IssueCreditNote("CN-0003", invoice.BalanceDue, Today, "Cancelled", Today);
+
+        invoice.BalanceDue.ShouldBe(0m);
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Credited);
+        invoice.CreditNotes.Sum(c => c.TaxAmount).ShouldBe(invoice.TaxAmount);
+        last.Amount.ShouldBe(999.98m);
+    }
+
+    [Fact]
+    public void PaidPartlyByPaymentAndPartlyByCredit_IsPaid()
+    {
+        var invoice = TaxedInvoice();
+        Pay(invoice, 1000m);
+
+        invoice.IssueCreditNote("CN-0001", 200m, Today, "Goodwill", Today);
+
+        invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Paid);
+        Should.Throw<DomainRuleException>(() => Pay(invoice, 1m)).Message.ShouldContain("still due");
+    }
+
+    [Theory]
+    [InlineData(0, 0, "Reason", "more than zero")]
+    [InlineData(1200.01, 0, "Reason", "more than the 1200.00 EUR still due")]
+    [InlineData(100, 1, "Reason", "future")]
+    [InlineData(100, 0, " ", "needs a reason")]
+    public void CreditNotes_MustBePositive_NotMoreThanIsDue_NotInTheFuture_AndExplained(
+        decimal amount, int daysAhead, string reason, string message)
+    {
+        var invoice = TaxedInvoice();
+
+        Should.Throw<DomainRuleException>(() => invoice.IssueCreditNote("CN-0001", amount, Today.AddDays(daysAhead), reason, Today))
+            .Message.ShouldContain(message);
+        invoice.CreditNotes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void CreditNotes_AreOnlyForIssuedInvoices_AndStopTheInvoiceBeingVoided()
+    {
+        var draft = CreateInvoice(Item(1, 100m));
+        Should.Throw<DomainRuleException>(() => draft.IssueCreditNote("CN-0001", 10m, Today, "Reason", Today));
+
+        var invoice = TaxedInvoice();
+        invoice.IssueCreditNote("CN-0001", 10m, Today, "Reason", Today);
+
+        Should.Throw<DomainRuleException>(() => invoice.Void(Now, "Duplicate")).Message.ShouldContain("has credit notes");
+        invoice.State.ShouldBe(InvoiceState.Issued);
+    }
+
+    [Fact]
     public void ReplaceItems_ReplacesExistingItems()
     {
         var invoice = CreateInvoice(Item(1, 10m), Item(1, 20m));
@@ -245,6 +317,15 @@ public class InvoiceTests
             IssueDate = Today.AddDays(-14)
         };
         invoice.ReplaceItems(items);
+        return invoice;
+    }
+
+    /// <summary>1000.00 EUR plus 20% tax: 1200.00 EUR, issued.</summary>
+    private static Invoice TaxedInvoice()
+    {
+        var invoice = IssuedInvoice(Item(1, 1000m));
+        invoice.Tax = 20;
+        invoice.TaxType = TaxType.Percentage;
         return invoice;
     }
 
