@@ -36,6 +36,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **CSV export**, a **print-friendly invoice view** and **branded PDFs** (logo, brand colour, sender details, tax label and footer). An issued invoice's PDF is made when it is issued, stored, and served unchanged from then on, so reprints match what the client received; drafts and void invoices are marked DRAFT or VOID.
 - **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Picking a customer in the invoice editor fills in "Bill to", currency, terms and due date; the invoice keeps its own copy of those details. Each customer's page lists their invoices. Deleting a customer only hides it, so invoice history stays intact. Existing invoices were linked to customers created from their "Bill to" text when upgrading.
 - **Products & services catalogue:** name, unit (hour, month, ...) and usual price. "Add from catalogue" in the invoice editor adds one as a line; the invoice keeps its own copy, so changing or deleting a product never alters existing invoices.
+- **Email with delivery status:** emails (invitations, overdue reminders, and soon invoices) are queued in an outbox in the same transaction as the change that causes them, then sent by a background worker with the company's name as sender and its reply-to address. Failed sends are retried after 1, 5, 15 and 60 minutes; the **Emails** page shows what was sent, what is waiting and what failed and why, and failed emails can be retried.
 - **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
 - **Roles and permissions:** Tenant Admin, Manager, Accountant and Employee, each with default permissions that admins can adjust per user. Users join by invitation link or are created by an admin.
 - **Company settings:** profile, tax/VAT details, invoice numbering (prefix, next number, padding), default currency, payment terms and tax rate, logo, brand colour, invoice footer, email and notification preferences.
@@ -133,6 +134,7 @@ npm run dev
 
 The interactive API reference is at <http://localhost:5080/scalar> in Development.
 **File storage.** Files are kept on the local disk by default (`App_Data/files` under the API, or the `files` volume in Docker). To use Azure Blob Storage, set `FileStorage__Provider=AzureBlob`, `FileStorage__AzureConnectionString` and optionally `FileStorage__AzureContainerName` (default `files`); the container is created on first use and is never public. The Blob Storage tests run when `FILESTORAGE_TEST_AZURE` holds a connection string, e.g. `UseDevelopmentStorage=true` with [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) running.
+**Email.** By default emails are only written to the log (`Email__Provider=Log`). To send them, set `Email__Provider=Smtp`, `Email__FromAddress` (the address every email is sent from) and `Email__Smtp__Host`, `__Port` (587), `__Security` (`Auto`, `StartTls`, `SslOnConnect` or `None`), `__Username` and `__Password`. Any SMTP service works (Postmark, SendGrid, Mailgun, Microsoft 365) as well as a local mail catcher such as Mailpit. Several API instances can run the worker at once: each email is claimed before it is sent.
 
 ## Running the tests
 
@@ -159,6 +161,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` `POST` `DELETE` | `/api/tenant/logo` | Company logo |
 | `GET` `POST` `PUT` `DELETE` | `/api/tenant/users/...` | Members, roles, permissions, invitations, password resets |
 | `GET` | `/api/tenant/audit-logs` | The company's activity log |
+| `GET` `POST` | `/api/emails`, `/api/emails/{id}/retry` | The company's emails with their delivery status; send a failed one again |
 | `GET` | `/api/reports/summary` | Financial summary per currency |
 | `GET` | `/api/invoices?search=&status=&customerId=&page=&pageSize=` | A page of invoice summaries (filtered and paged in SQL, up to 100 per page) |
 | `GET` | `/api/invoices/stats` | Invoice counts and outstanding, overdue and billed amounts per currency |
