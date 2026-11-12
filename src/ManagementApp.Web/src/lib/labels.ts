@@ -1,4 +1,4 @@
-import type { Permission, SubscriptionStatus, TenantRole, TenantStatus } from '../api/types'
+import type { PaymentMethod, Permission, SubscriptionStatus, TenantRole, TenantStatus } from '../api/types'
 
 export const roles: TenantRole[] = ['TenantAdmin', 'Manager', 'Accountant', 'Employee']
 
@@ -74,6 +74,8 @@ const actionLabels: Record<string, string> = {
   'invoice.issued': 'Invoice issued',
   'invoice.voided': 'Invoice voided',
   'invoice.payment_changed': 'Payment changed',
+  'payment.recorded': 'Payment recorded',
+  'payment.deleted': 'Payment deleted',
   'invoice.exported': 'Invoices exported',
   'impersonation.started': 'Impersonation started',
   'impersonation.ended': 'Impersonation ended',
@@ -87,6 +89,7 @@ export const actionLabel = (action: string) => actionLabels[action] ?? action
 export const auditActionFilters = [
   { value: '', label: 'All activity' },
   { value: 'invoice.', label: 'Invoices' },
+  { value: 'payment.', label: 'Payments' },
   { value: 'user.', label: 'Users' },
   { value: 'tenant.', label: 'Company' },
   { value: 'auth.', label: 'Sign-ins' },
@@ -96,4 +99,12 @@ export const auditActionFilters = [
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+}
+
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  BankTransfer: 'Bank transfer',
+  Card: 'Card',
+  Cash: 'Cash',
+  Cheque: 'Cheque',
+  Other: 'Other',
 }

@@ -3,14 +3,14 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
-import { useDeleteInvoice, useInvoice, useIssueInvoice, useRecordAmountPaid, useVoidInvoice } from '../api/invoices'
+import { useDeleteInvoice, useDeletePayment, useInvoice, useIssueInvoice, useRecordPayment, useVoidInvoice } from '../api/invoices'
 import { tenantLogoUrl, useCurrentTenant } from '../api/tenant'
-import type { CurrentTenant, Invoice } from '../api/types'
+import type { CurrentTenant, Invoice, PaymentMethod } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { inputClass } from '../components/styles'
-import { Alert, Button, ButtonLink, Card, Field, Spinner } from '../components/ui'
-import { formatDate, formatMoney, invoiceTitle } from '../lib/format'
-import { formatDateTime } from '../lib/labels'
+import { Alert, Button, ButtonLink, Card, EmptyRow, Field, Spinner, tableClass, tdClass, theadClass, thClass } from '../components/ui'
+import { formatDate, formatMoney, invoiceTitle, toIsoDate } from '../lib/format'
+import { formatDateTime, paymentMethodLabels } from '../lib/labels'
 import { NotFoundPage } from './NotFoundPage'
 
 export function InvoiceDetailsPage() {
@@ -46,6 +46,7 @@ function InvoiceDetails({ id }: { id: number }) {
       )}
       <StateNotice invoice={invoice} nextInvoiceNumber={tenant?.nextInvoiceNumber} />
       <InvoiceDocument invoice={invoice} tenant={tenant} />
+      {invoice.state !== 'Draft' && <PaymentHistory invoice={invoice} />}
     </>
   )
 }
@@ -117,7 +118,7 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
                 Void
               </Button>
             )}
-            {isIssued && canEdit && (
+            {isIssued && canEdit && invoice.balanceDue > 0 && (
               <Button onClick={() => setMode('payment')}>
                 <Banknote className="size-4" aria-hidden />
                 Record payment
@@ -178,48 +179,156 @@ function VoidForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void })
   )
 }
 
+/** One payment received. The amount defaults to what is still due, the date to today. */
 function PaymentForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void }) {
-  const recordAmountPaid = useRecordAmountPaid()
-  const [amount, setAmount] = useState(String(invoice.amountPaid || invoice.total))
+  const recordPayment = useRecordPayment()
+  const today = toIsoDate(new Date())
+  const [amount, setAmount] = useState(String(invoice.balanceDue))
+  const [date, setDate] = useState(today)
+  const [method, setMethod] = useState<PaymentMethod>('BankTransfer')
+  const [reference, setReference] = useState('')
   const value = Number(amount)
-  const valid = amount.trim() !== '' && Number.isFinite(value) && value >= 0
+  const valid = amount.trim() !== '' && Number.isFinite(value) && value > 0 && value <= invoice.balanceDue && Boolean(date)
+  const fieldErrors = recordPayment.error instanceof ApiError ? recordPayment.error.problem?.errors : undefined
+  const error = (field: string) => fieldErrors?.[field]?.join(' ')
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    recordAmountPaid.mutate({ id: invoice.id, amountPaid: value }, { onSuccess: onDone })
+    recordPayment.mutate(
+      { id: invoice.id, payment: { amount: value, date, method, reference: reference.trim() || null, notes: null } },
+      { onSuccess: onDone },
+    )
   }
 
   return (
     <Card className="mt-4 p-4">
-      <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Field
-          label={`Total received (${invoice.currency})`}
-          htmlFor="amountPaid"
-          hint={`Of ${formatMoney(invoice.total, invoice.currency)} billed.`}
-          error={recordAmountPaid.error instanceof ApiError ? recordAmountPaid.error.messages.join(' ') : undefined}
-          className="sm:w-64"
-        >
-          <input
-            id="amountPaid"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            autoFocus
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <div className="flex gap-2 sm:mb-6">
+      <form onSubmit={submit} className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field
+            label={`Amount (${invoice.currency})`}
+            htmlFor="paymentAmount"
+            hint={`${formatMoney(invoice.balanceDue, invoice.currency)} still due.`}
+            error={error('amount')}
+          >
+            <input
+              id="paymentAmount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              max={invoice.balanceDue}
+              required
+              autoFocus
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Received on" htmlFor="paymentDate" error={error('date')}>
+            <input id="paymentDate" type="date" required max={today} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="Method" htmlFor="paymentMethod" error={error('method')}>
+            <select id="paymentMethod" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)} className={inputClass}>
+              {Object.entries(paymentMethodLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Reference" htmlFor="paymentReference" error={error('reference')}>
+            <input
+              id="paymentReference"
+              maxLength={100}
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="e.g. bank reference"
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        {recordPayment.error && !fieldErrors && <Alert>{recordPayment.error.message}</Alert>}
+        <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onDone}>
             Cancel
           </Button>
-          <Button type="submit" loading={recordAmountPaid.isPending} disabled={!valid}>
-            Save
+          <Button type="submit" loading={recordPayment.isPending} disabled={!valid}>
+            Record payment
           </Button>
         </div>
       </form>
+    </Card>
+  )
+}
+
+/** The payments received on an issued or void invoice. Mistakes can be deleted while the invoice is issued. */
+function PaymentHistory({ invoice }: { invoice: Invoice }) {
+  const deletePayment = useDeletePayment()
+  const canDelete = useCan('InvoicesDelete') && invoice.state === 'Issued'
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const money = (amount: number) => formatMoney(amount, invoice.currency)
+
+  return (
+    <Card className="mt-6 overflow-hidden print:hidden">
+      <h2 className="border-b border-line px-4 py-3 text-sm font-semibold">Payments</h2>
+      {deletePayment.error && (
+        <div className="p-4 pb-0">
+          <Alert>{deletePayment.error.message}</Alert>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className={tableClass}>
+          <thead className={theadClass}>
+            <tr>
+              <th scope="col" className={thClass}>Received</th>
+              <th scope="col" className={thClass}>Method</th>
+              <th scope="col" className={`${thClass} hidden sm:table-cell`}>Reference</th>
+              <th scope="col" className={`${thClass} text-right`}>Amount</th>
+              {canDelete && (
+                <th scope="col" className={thClass}>
+                  <span className="sr-only">Actions</span>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {invoice.payments.length === 0 && <EmptyRow colSpan={canDelete ? 5 : 4}>No payments recorded yet.</EmptyRow>}
+            {invoice.payments.map((payment) => (
+              <tr key={payment.id}>
+                <td className={`${tdClass} whitespace-nowrap`}>{formatDate(payment.date)}</td>
+                <td className={tdClass}>{paymentMethodLabels[payment.method]}</td>
+                <td className={`${tdClass} hidden text-muted sm:table-cell`} title={payment.notes ?? undefined}>
+                  {payment.reference ?? '—'}
+                </td>
+                <td className={`${tdClass} text-right whitespace-nowrap tabular-nums`}>{money(payment.amount)}</td>
+                {canDelete && (
+                  <td className={`${tdClass} text-right whitespace-nowrap`}>
+                    {confirmingId === payment.id ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => setConfirmingId(null)}>
+                          Keep
+                        </Button>
+                        <Button
+                          variant="danger"
+                          loading={deletePayment.isPending}
+                          onClick={() =>
+                            deletePayment.mutate({ id: invoice.id, paymentId: payment.id }, { onSuccess: () => setConfirmingId(null) })
+                          }
+                        >
+                          Delete
+                        </Button>
+                      </span>
+                    ) : (
+                      <Button variant="ghost" aria-label={`Delete payment of ${money(payment.amount)}`} onClick={() => setConfirmingId(payment.id)}>
+                        <Trash2 className="size-4" aria-hidden />
+                      </Button>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   )
 }

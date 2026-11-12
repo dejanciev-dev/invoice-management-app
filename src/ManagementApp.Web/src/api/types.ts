@@ -6,6 +6,22 @@ export type InvoiceStatus = 'Draft' | 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Ove
 /** Drafts can be edited and deleted; issued invoices are final and can only be voided. */
 export type InvoiceState = 'Draft' | 'Issued' | 'Void'
 
+export type PaymentMethod = 'BankTransfer' | 'Card' | 'Cash' | 'Cheque' | 'Other'
+
+export interface RecordPaymentRequest {
+  amount: number
+  /** The day the money was received (not in the future). */
+  date: string
+  method: PaymentMethod
+  reference: string | null
+  notes: string | null
+}
+
+export interface Payment extends RecordPaymentRequest {
+  id: number
+  recordedAt: string
+}
+
 export interface InvoiceItem {
   id: number
   description: string
@@ -29,6 +45,7 @@ export interface Invoice {
   discountType: AdjustmentType
   tax: number
   taxType: AdjustmentType
+  /** The sum of `payments`. */
   amountPaid: number
   items: InvoiceItem[]
   subtotal: number
@@ -43,6 +60,8 @@ export interface Invoice {
   voidReason: string | null
   /** The saved customer the invoice was made for, if any; `to` is the printed snapshot of their details. */
   customer: InvoiceCustomer | null
+  /** Money received, oldest first; `amountPaid` is their sum. */
+  payments: Payment[]
 }
 
 export interface InvoiceCustomer {
@@ -130,7 +149,6 @@ export interface SaveInvoiceRequest {
   discountType: AdjustmentType
   tax: number
   taxType: AdjustmentType
-  amountPaid: number
   items: { description: string; quantity: number; unitPrice: number }[]
 }
 

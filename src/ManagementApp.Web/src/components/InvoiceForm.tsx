@@ -193,9 +193,6 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
                 </select>
               </div>
             </Field>
-            <Field label="Amount paid" htmlFor="amountPaid" error={errors.amountPaid?.message}>
-              <input id="amountPaid" type="number" step="0.01" min="0" {...register('amountPaid', number)} aria-invalid={!!errors.amountPaid} className={inputClass} />
-            </Field>
           </div>
         </Section>
 
@@ -262,7 +259,7 @@ function Summary({ control }: { control: Control<InvoiceFormValues> }) {
     discountType: values.discountType ?? 'Percentage',
     tax: values.tax ?? 0,
     taxType: values.taxType ?? 'Percentage',
-    amountPaid: values.amountPaid ?? 0,
+    amountPaid: 0, // drafts take no payments
   })
   const money = (amount: number) => formatMoney(amount, currency)
 
@@ -272,8 +269,6 @@ function Summary({ control }: { control: Control<InvoiceFormValues> }) {
       <SummaryRow label="Discount" value={`−${money(totals.discountAmount)}`} />
       <SummaryRow label="Tax" value={money(totals.taxAmount)} />
       <SummaryRow label="Total" value={money(totals.total)} strong />
-      {(values.amountPaid ?? 0) > 0 && <SummaryRow label="Paid" value={`−${money(values.amountPaid ?? 0)}`} />}
-      <SummaryRow label="Balance due" value={money(totals.balanceDue)} strong />
     </dl>
   )
 }

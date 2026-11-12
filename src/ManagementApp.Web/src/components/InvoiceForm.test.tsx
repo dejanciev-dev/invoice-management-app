@@ -64,7 +64,7 @@ describe('InvoiceForm', () => {
 
     expect(screen.getByLabelText('Item 1 amount')).toHaveTextContent('$301.00')
     expect(totals().getByText('$60.20')).toBeInTheDocument()
-    expect(totals().getAllByText('$361.20')).toHaveLength(2) // total and balance due
+    expect(totals().getAllByText('$361.20')).toHaveLength(1) // the total
   })
 
   it('adds and removes items', async () => {
@@ -156,7 +156,7 @@ describe('InvoiceForm', () => {
     expect(screen.getByLabelText('Item 1 unit price')).toHaveValue(95)
     expect(screen.getByLabelText('Item 2 description')).toHaveValue('Hosting')
     expect(screen.getByLabelText('Item 2 quantity')).toHaveValue(1)
-    expect(totals().getAllByText('$244.00')).toHaveLength(3) // subtotal, total and balance due (no tax or discount)
+    expect(totals().getAllByText('$244.00')).toHaveLength(2) // subtotal and total (no tax or discount)
   })
 
   it('shows server validation errors next to the matching fields', () => {
