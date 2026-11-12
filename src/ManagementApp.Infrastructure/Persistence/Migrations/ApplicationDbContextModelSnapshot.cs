@@ -526,6 +526,120 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("ManagementApp.Domain.Messaging.EmailAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("EmailMessageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmailMessageId");
+
+                    b.ToTable("EmailAttachments", (string)null);
+                });
+
+            modelBuilder.Entity("ManagementApp.Domain.Messaging.EmailMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("FromName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RelatedEntityId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ReplyTo")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("To")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.HasIndex("TenantId", "RelatedEntityType", "RelatedEntityId");
+
+                    b.ToTable("EmailMessages");
+                });
+
             modelBuilder.Entity("ManagementApp.Domain.Tenancy.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1047,6 +1161,24 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ManagementApp.Domain.Messaging.EmailAttachment", b =>
+                {
+                    b.HasOne("ManagementApp.Domain.Messaging.EmailMessage", null)
+                        .WithMany("Attachments")
+                        .HasForeignKey("EmailMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ManagementApp.Domain.Messaging.EmailMessage", b =>
+                {
+                    b.HasOne("ManagementApp.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ManagementApp.Domain.Tenancy.Tenant", b =>
                 {
                     b.OwnsOne("ManagementApp.Domain.Tenancy.TenantEmailSettings", "EmailSettings", b1 =>
@@ -1298,6 +1430,11 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("ManagementApp.Domain.Messaging.EmailMessage", b =>
+                {
+                    b.Navigation("Attachments");
                 });
 #pragma warning restore 612, 618
         }

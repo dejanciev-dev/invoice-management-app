@@ -1,10 +1,11 @@
 using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Application.Emails;
 using ManagementApp.Infrastructure.Auditing;
 using ManagementApp.Infrastructure.BackgroundJobs;
 using ManagementApp.Infrastructure.Files;
 using ManagementApp.Infrastructure.Files.Storage;
 using ManagementApp.Infrastructure.Identity;
-using ManagementApp.Infrastructure.Notifications;
+using ManagementApp.Infrastructure.Emails;
 using ManagementApp.Infrastructure.Persistence;
 using ManagementApp.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Identity;
@@ -30,7 +31,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantContext>(provider => provider.GetRequiredService<TenantContext>());
         services.AddScoped<TenantAccessResolver>();
         services.AddScoped<IAuditLogger, AuditLogger>();
-        services.AddScoped<INotificationSender, LoggingNotificationSender>();
+        services.AddScoped<INotificationSender, OutboxNotificationSender>();
 
         services.AddIdentityApiEndpoints<ApplicationUser>(options =>
             {
@@ -66,6 +67,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
         services.AddFileStorage(configuration);
+        services.AddEmail(configuration);
         services.AddSingleton<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
 
         services.AddSingleton<TenantJobRunner>();
