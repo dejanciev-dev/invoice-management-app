@@ -70,6 +70,7 @@ public sealed record CurrentTenantDto(
     Guid Id,
     TenantStatus Status,
     bool HasLogo,
+    // The number the next issued invoice will get, unless another one is issued first.
     string NextInvoiceNumber,
     string InvoiceSenderDetails,
     TenantSettingsDto Settings,

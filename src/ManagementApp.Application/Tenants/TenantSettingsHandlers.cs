@@ -1,6 +1,8 @@
 using FluentValidation;
+using FluentValidation.Results;
 using ManagementApp.Application.Common.Exceptions;
 using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Application.Invoices;
 using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +17,7 @@ public sealed class GetCurrentTenantHandler(IApplicationDbContext context, ITena
         var tenant = await context.Tenants.AsNoTracking().SingleOrDefaultAsync(t => t.Id == tenantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Tenant), tenantId);
 
-        return tenant.ToCurrentTenantDto(timeProvider.GetUtcNow());
+        return tenant.ToCurrentTenantDto(timeProvider.GetUtcNow(), await context.GetNextInvoiceNumberAsync(tenant.Id, cancellationToken));
     }
 }
 
@@ -43,7 +45,9 @@ public sealed class UpdateTenantSettingsHandler(
             throw new ForbiddenException("Your plan does not include custom branding.");
         }
 
+        await ApplyNextInvoiceNumberAsync(tenant, settings.Invoice, cancellationToken);
         tenant.ApplySettings(settings);
+
         auditLogger.Add(new AuditEntry(AuditActions.TenantSettingsUpdated)
         {
             TenantId = tenant.Id,
@@ -53,7 +57,33 @@ public sealed class UpdateTenantSettingsHandler(
         });
 
         await context.SaveChangesAsync(cancellationToken);
-        return tenant.ToCurrentTenantDto(timeProvider.GetUtcNow());
+        return tenant.ToCurrentTenantDto(timeProvider.GetUtcNow(), await context.GetNextInvoiceNumberAsync(tenant.Id, cancellationToken));
+    }
+
+    /// <summary>
+    /// Moving the sequence forward is always allowed, e.g. to continue from another invoicing system. Moving it back
+    /// would hand out numbers again, so it is only allowed together with a new prefix, which starts a new series (such
+    /// as a new year). This also stops a settings form opened before an invoice was issued from resetting the sequence.
+    /// </summary>
+    private async Task ApplyNextInvoiceNumberAsync(Tenant tenant, InvoiceSettingsDto invoice, CancellationToken cancellationToken)
+    {
+        var current = await context.GetNextInvoiceNumberAsync(tenant.Id, cancellationToken);
+        if (invoice.NextNumber == current)
+        {
+            return;
+        }
+
+        var newSeries = !string.Equals(invoice.NumberPrefix.Trim(), tenant.InvoiceSettings.NumberPrefix, StringComparison.Ordinal);
+        if (invoice.NextNumber < current && !newSeries)
+        {
+            throw new ValidationException(
+            [
+                new ValidationFailure("Invoice.NextNumber",
+                    $"Invoice numbers have already reached {current}. The next number can only go back if you also change the prefix to start a new series.")
+            ]);
+        }
+
+        await context.SetNextInvoiceNumberAsync(tenant.Id, invoice.NextNumber, cancellationToken);
     }
 }
 

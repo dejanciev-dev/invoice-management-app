@@ -10,7 +10,6 @@ public class SaveInvoiceCommandValidatorTests
 
     private static readonly SaveInvoiceCommand ValidCommand = new()
     {
-        InvoiceNumber = "INV-001",
         From = "Acme Ltd",
         To = "Globex Corporation",
         IssueDate = new DateOnly(2026, 10, 1),
@@ -112,11 +111,10 @@ public class SaveInvoiceCommandValidatorTests
     }
 
     [Fact]
-    public void RequiresPartiesAndInvoiceNumber()
+    public void RequiresTheParties()
     {
-        var result = _validator.TestValidate(ValidCommand with { InvoiceNumber = "", From = "", To = "" });
+        var result = _validator.TestValidate(ValidCommand with { From = "", To = "" });
 
-        result.ShouldHaveValidationErrorFor(c => c.InvoiceNumber);
         result.ShouldHaveValidationErrorFor(c => c.From);
         result.ShouldHaveValidationErrorFor(c => c.To);
     }

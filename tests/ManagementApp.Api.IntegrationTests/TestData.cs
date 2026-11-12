@@ -11,19 +11,19 @@ internal static class TestData
 {
     public static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    public static SaveInvoiceCommand NewInvoice(string number) => new()
+    /// <summary>A draft billed to <paramref name="billTo"/>, which tests use to tell invoices apart (drafts have no number).</summary>
+    public static SaveInvoiceCommand NewInvoice(string billTo) => new()
     {
-        InvoiceNumber = number,
         From = "Acme Ltd",
-        To = "Globex Corporation",
+        To = billTo,
         IssueDate = new DateOnly(2026, 3, 1),
         DueDate = new DateOnly(2026, 3, 31),
         Currency = "EUR",
         Items = [new InvoiceItemInput("Consulting", 2, 150.50m)]
     };
 
-    public static async Task<InvoiceDto> CreateInvoiceAsync(this HttpClient client, string number) =>
-        await client.CreateInvoiceAsync(NewInvoice(number));
+    public static async Task<InvoiceDto> CreateInvoiceAsync(this HttpClient client, string billTo) =>
+        await client.CreateInvoiceAsync(NewInvoice(billTo));
 
     public static async Task<InvoiceDto> CreateInvoiceAsync(this HttpClient client, SaveInvoiceCommand command)
     {
@@ -33,8 +33,8 @@ internal static class TestData
     }
 
     /// <summary>Creates an invoice and issues it, so it is payable and counts in statuses, statistics and reminders.</summary>
-    public static async Task<InvoiceDto> CreateIssuedInvoiceAsync(this HttpClient client, string number) =>
-        await client.CreateIssuedInvoiceAsync(NewInvoice(number));
+    public static async Task<InvoiceDto> CreateIssuedInvoiceAsync(this HttpClient client, string billTo) =>
+        await client.CreateIssuedInvoiceAsync(NewInvoice(billTo));
 
     public static async Task<InvoiceDto> CreateIssuedInvoiceAsync(this HttpClient client, SaveInvoiceCommand command) =>
         await client.IssueInvoiceAsync((await client.CreateInvoiceAsync(command)).Id);

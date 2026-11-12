@@ -31,7 +31,7 @@ public sealed class GetInvoicesHandler(IApplicationDbContext context, TenantCloc
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim();
-            invoices = invoices.Where(i => i.InvoiceNumber.Contains(search) || i.To.Contains(search));
+            invoices = invoices.Where(i => (i.InvoiceNumber != null && i.InvoiceNumber.Contains(search)) || i.To.Contains(search));
         }
 
         if (query.CustomerId is { } customerId)

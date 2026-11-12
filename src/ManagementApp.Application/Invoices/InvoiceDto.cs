@@ -4,7 +4,7 @@ namespace ManagementApp.Application.Invoices;
 
 public sealed record InvoiceDto(
     int Id,
-    string InvoiceNumber,
+    string? InvoiceNumber,
     string From,
     string To,
     DateOnly IssueDate,
@@ -35,7 +35,7 @@ public sealed record InvoiceCustomerDto(int Id, string Name, bool IsDeleted);
 
 public sealed record InvoiceSummaryDto(
     int Id,
-    string InvoiceNumber,
+    string? InvoiceNumber,
     string To,
     DateOnly IssueDate,
     DateOnly? DueDate,
