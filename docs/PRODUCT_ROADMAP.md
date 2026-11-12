@@ -660,7 +660,7 @@ Suggested labels: `phase:2`…`phase:7`, `area:backend`, `area:frontend`, `area:
 - [x] Payment entity, record/delete payment, migrate `AmountPaid` `P0`
 - [x] `IFileStorage` with Blob/S3 implementation and tenant-prefixed keys `P0`
 - [x] PDF rendering with tenant branding (QuestPDF) `P0`
-- [ ] Email provider adapter + `EmailMessages` outbox + delivery status `P0`
+- [x] Email provider adapter + `EmailMessages` outbox + delivery status `P0`
 - [ ] "Send invoice" flow with preview `area:frontend` `P0`
 - [ ] Hangfire on SQL Server with tenant-aware job filter (replace timer) `P0`
 - [ ] Recurring invoice schedules `P0`
