@@ -1,7 +1,16 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiRequest, json, query, withTenant } from './client'
 import { tenantKeys } from './tenant'
-import type { Invoice, InvoiceStats, InvoiceStatus, InvoiceSummary, Paged, RecordPaymentRequest, SaveInvoiceRequest } from './types'
+import type {
+  Invoice,
+  InvoiceStats,
+  InvoiceStatus,
+  InvoiceSummary,
+  IssueCreditNoteRequest,
+  Paged,
+  RecordPaymentRequest,
+  SaveInvoiceRequest,
+} from './types'
 
 export const INVOICE_PAGE_SIZE = 25
 
@@ -121,5 +130,12 @@ export function useRecordPayment() {
 export function useDeletePayment() {
   return useInvoiceTransition(({ id, paymentId }: { id: number; paymentId: number }) =>
     apiRequest<Invoice>(`/invoices/${id}/payments/${paymentId}`, { method: 'DELETE' }),
+  )
+}
+
+/** Credits part or all of the balance due under the next credit note number. Credit notes are final. */
+export function useIssueCreditNote() {
+  return useInvoiceTransition(({ id, creditNote }: { id: number; creditNote: IssueCreditNoteRequest }) =>
+    apiRequest<Invoice>(`/invoices/${id}/credit-notes`, { method: 'POST', ...json(creditNote) }),
   )
 }

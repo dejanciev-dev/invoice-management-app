@@ -109,6 +109,7 @@ export function TenantSettingsForm({ initial, onSave, saving, error, saved, bran
 
       <SettingsSection title="Invoice numbering and defaults">
         {text('invoice', 'numberPrefix', 'Number prefix', { placeholder: 'INV-' })}
+        {text('invoice', 'creditNotePrefix', 'Credit note prefix', { placeholder: 'CN-', hint: 'Credit notes are numbered separately from invoices.' })}
         {text('invoice', 'nextNumber', 'Next number', {
           type: 'number',
           hint: 'Given to the next invoice you issue. It can only go back if you also change the prefix.',

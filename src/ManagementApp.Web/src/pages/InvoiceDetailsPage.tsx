@@ -1,9 +1,17 @@
-import { ArrowLeft, Ban, Banknote, Pencil, Printer, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, Banknote, Pencil, Printer, ReceiptText, Send, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
-import { useDeleteInvoice, useDeletePayment, useInvoice, useIssueInvoice, useRecordPayment, useVoidInvoice } from '../api/invoices'
+import {
+  useDeleteInvoice,
+  useDeletePayment,
+  useInvoice,
+  useIssueCreditNote,
+  useIssueInvoice,
+  useRecordPayment,
+  useVoidInvoice,
+} from '../api/invoices'
 import { tenantLogoUrl, useCurrentTenant } from '../api/tenant'
 import type { CurrentTenant, Invoice, PaymentMethod } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
@@ -47,15 +55,16 @@ function InvoiceDetails({ id }: { id: number }) {
       <StateNotice invoice={invoice} nextInvoiceNumber={tenant?.nextInvoiceNumber} />
       <InvoiceDocument invoice={invoice} tenant={tenant} />
       {invoice.state !== 'Draft' && <PaymentHistory invoice={invoice} />}
+      {invoice.creditNotes.length > 0 && <CreditNoteList invoice={invoice} />}
     </>
   )
 }
 
-type ToolbarMode = 'actions' | 'delete' | 'void' | 'payment'
+type ToolbarMode = 'actions' | 'delete' | 'void' | 'payment' | 'credit'
 
 /**
- * The actions follow the invoice's lifecycle: drafts can be edited, deleted or issued; issued invoices can only have
- * payments recorded or be voided; void invoices are closed.
+ * The actions follow the invoice's lifecycle: drafts can be edited, deleted or issued; issued invoices can have
+ * payments recorded, be credited, or be voided (unless already credited); void invoices are closed.
  */
 function Toolbar({ invoice }: { invoice: Invoice }) {
   const navigate = useNavigate()
@@ -112,10 +121,16 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
                 Issue
               </Button>
             )}
-            {isIssued && canDelete && (
+            {isIssued && canDelete && invoice.creditNotes.length === 0 && (
               <Button variant="secondary" onClick={() => setMode('void')}>
                 <Ban className="size-4" aria-hidden />
                 Void
+              </Button>
+            )}
+            {isIssued && canEdit && invoice.balanceDue > 0 && (
+              <Button variant="secondary" onClick={() => setMode('credit')}>
+                <ReceiptText className="size-4" aria-hidden />
+                Credit
               </Button>
             )}
             {isIssued && canEdit && invoice.balanceDue > 0 && (
@@ -129,6 +144,7 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
       </div>
       {mode === 'void' && <VoidForm invoice={invoice} onDone={done} />}
       {mode === 'payment' && <PaymentForm invoice={invoice} onDone={done} />}
+      {mode === 'credit' && <CreditNoteForm invoice={invoice} onDone={done} />}
       {(issueInvoice.error || deleteInvoice.error) && (
         <div className="mt-3">
           <Alert>{(issueInvoice.error ?? deleteInvoice.error)?.message}</Alert>
@@ -333,6 +349,116 @@ function PaymentHistory({ invoice }: { invoice: Invoice }) {
   )
 }
 
+/** Credits part or all of the balance due. The amount includes tax; the server splits the tax out. */
+function CreditNoteForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void }) {
+  const issueCreditNote = useIssueCreditNote()
+  const today = toIsoDate(new Date())
+  const [amount, setAmount] = useState(String(invoice.balanceDue))
+  const [date, setDate] = useState(today)
+  const [reason, setReason] = useState('')
+  const value = Number(amount)
+  const valid =
+    amount.trim() !== '' && Number.isFinite(value) && value > 0 && value <= invoice.balanceDue && Boolean(date) && Boolean(reason.trim())
+  const fieldErrors = issueCreditNote.error instanceof ApiError ? issueCreditNote.error.problem?.errors : undefined
+  const error = (field: string) => fieldErrors?.[field]?.join(' ')
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    issueCreditNote.mutate({ id: invoice.id, creditNote: { amount: value, date, reason: reason.trim() } }, { onSuccess: onDone })
+  }
+
+  return (
+    <Card className="mt-4 p-4">
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm">
+          A credit note reduces what is owed on invoice <span className="font-medium">{invoice.invoiceNumber}</span>. It gets
+          its own number and cannot be changed or deleted afterwards.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field
+            label={`Amount incl. tax (${invoice.currency})`}
+            htmlFor="creditAmount"
+            hint={`Up to ${formatMoney(invoice.balanceDue, invoice.currency)}.`}
+            error={error('amount')}
+          >
+            <input
+              id="creditAmount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              max={invoice.balanceDue}
+              required
+              autoFocus
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Date" htmlFor="creditDate" error={error('date')}>
+            <input id="creditDate" type="date" required max={today} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="Reason" htmlFor="creditReason" error={error('reason')}>
+            <input
+              id="creditReason"
+              required
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Returned goods"
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        {issueCreditNote.error && !fieldErrors && <Alert>{issueCreditNote.error.message}</Alert>}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={issueCreditNote.isPending} disabled={!valid}>
+            Issue credit note
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+function CreditNoteList({ invoice }: { invoice: Invoice }) {
+  const money = (amount: number) => formatMoney(amount, invoice.currency)
+
+  return (
+    <Card className="mt-6 overflow-hidden print:hidden">
+      <h2 className="border-b border-line px-4 py-3 text-sm font-semibold">Credit notes</h2>
+      <div className="overflow-x-auto">
+        <table className={tableClass}>
+          <thead className={theadClass}>
+            <tr>
+              <th scope="col" className={thClass}>Number</th>
+              <th scope="col" className={thClass}>Date</th>
+              <th scope="col" className={thClass}>Reason</th>
+              <th scope="col" className={`${thClass} hidden text-right sm:table-cell`}>Tax</th>
+              <th scope="col" className={`${thClass} text-right`}>Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {invoice.creditNotes.map((creditNote) => (
+              <tr key={creditNote.id}>
+                <td className={`${tdClass} font-medium whitespace-nowrap`}>{creditNote.number}</td>
+                <td className={`${tdClass} whitespace-nowrap`}>{formatDate(creditNote.date)}</td>
+                <td className={tdClass}>{creditNote.reason}</td>
+                <td className={`${tdClass} hidden text-right whitespace-nowrap text-muted tabular-nums sm:table-cell`}>
+                  {money(creditNote.taxAmount)}
+                </td>
+                <td className={`${tdClass} text-right whitespace-nowrap tabular-nums`}>{money(creditNote.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
 /** Explains what the invoice's state means for the user, above the document. */
 function StateNotice({ invoice, nextInvoiceNumber }: { invoice: Invoice; nextInvoiceNumber?: string }) {
   if (invoice.state === 'Draft') {
@@ -440,6 +566,7 @@ function InvoiceDocument({ invoice, tenant }: { invoice: Invoice; tenant?: Curre
           )}
           <TotalRow label="Total" value={money(invoice.total)} strong />
           {invoice.amountPaid > 0 && <TotalRow label="Paid" value={`−${money(invoice.amountPaid)}`} />}
+          {invoice.creditedAmount > 0 && <TotalRow label="Credited" value={`−${money(invoice.creditedAmount)}`} />}
           <div className="flex justify-between rounded-lg bg-subtle px-3 py-2.5 text-base font-semibold">
             <dt>Balance due</dt>
             <dd className="tabular-nums">{money(invoice.balanceDue)}</dd>
