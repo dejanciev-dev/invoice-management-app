@@ -1,5 +1,6 @@
 ﻿using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Entities;
+using ManagementApp.Domain.Messaging;
 using ManagementApp.Domain.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,6 +40,9 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
 
     DbSet<ImpersonationSession> ImpersonationSessions { get; }
+
+    /// <summary>The outbox; see <see cref="Emails.EmailOutbox"/>.</summary>
+    DbSet<EmailMessage> EmailMessages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 

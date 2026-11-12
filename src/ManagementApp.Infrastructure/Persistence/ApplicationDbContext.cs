@@ -3,6 +3,7 @@ using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
+using ManagementApp.Domain.Messaging;
 using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -43,6 +44,8 @@ public class ApplicationDbContext(
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
+
+    public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
 
     /// <summary>Read by the tenant query filters on every query, so it always reflects the current scope.</summary>
     private Guid? CurrentTenantId => tenantContext.TenantId;
