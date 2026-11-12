@@ -109,7 +109,10 @@ export function TenantSettingsForm({ initial, onSave, saving, error, saved, bran
 
       <SettingsSection title="Invoice numbering and defaults">
         {text('invoice', 'numberPrefix', 'Number prefix', { placeholder: 'INV-' })}
-        {text('invoice', 'nextNumber', 'Next number', { type: 'number' })}
+        {text('invoice', 'nextNumber', 'Next number', {
+          type: 'number',
+          hint: 'Given to the next invoice you issue. It can only go back if you also change the prefix.',
+        })}
         {text('invoice', 'numberPadding', 'Digits', { type: 'number', hint: 'The number is zero-padded to this length.' })}
         {text('invoice', 'defaultPaymentTermsDays', 'Payment terms (days)', { type: 'number' })}
         {text('invoice', 'taxLabel', 'Tax name', { placeholder: 'VAT' })}

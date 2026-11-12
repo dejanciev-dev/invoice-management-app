@@ -83,8 +83,7 @@ describe('InvoiceForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create invoice' }))
 
-    expect(await screen.findByText('Invoice number is required')).toBeInTheDocument()
-    expect(screen.getByText('Your business details are required')).toBeInTheDocument()
+    expect(await screen.findByText('Your business details are required')).toBeInTheDocument()
     expect(screen.getByText('Description is required')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -92,7 +91,6 @@ describe('InvoiceForm', () => {
   it('submits the entered values', async () => {
     const { user, onSubmit } = renderForm()
 
-    await user.type(screen.getByLabelText('Invoice number'), 'INV-042')
     await user.type(screen.getByLabelText('From'), 'Acme Ltd')
     await user.type(screen.getByLabelText('Bill to'), 'Globex')
     await user.type(screen.getByLabelText('Item 1 description'), 'Consulting')
@@ -101,7 +99,6 @@ describe('InvoiceForm', () => {
 
     expect(onSubmit).toHaveBeenCalledOnce()
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
-      invoiceNumber: 'INV-042',
       customer: null,
       items: [{ description: 'Consulting', quantity: 1, unitPrice: 99 }],
     })
@@ -120,7 +117,6 @@ describe('InvoiceForm', () => {
     expect(screen.getByLabelText('Due date')).toHaveValue('2026-03-15')
     expect(String(fetchMock.mock.lastCall?.[0])).toContain('search=glo')
 
-    await user.type(screen.getByLabelText('Invoice number'), 'INV-042')
     await user.type(screen.getByLabelText('From'), 'Acme Ltd')
     await user.type(screen.getByLabelText('Item 1 description'), 'Consulting')
     await user.click(screen.getByRole('button', { name: 'Create invoice' }))
@@ -167,14 +163,14 @@ describe('InvoiceForm', () => {
     const serverError = new ApiError(400, {
       status: 400,
       errors: {
-        invoiceNumber: ["Invoice number 'INV-001' is already in use."],
+        currency: ['Currency must be a three-letter ISO 4217 code.'],
         'items[0].description': ['Description is too long.'],
       },
     })
 
     renderForm({ serverError })
 
-    expect(screen.getByText("Invoice number 'INV-001' is already in use.")).toBeInTheDocument()
+    expect(screen.getByText('Currency must be a three-letter ISO 4217 code.')).toBeInTheDocument()
     expect(screen.getByText('Description is too long.')).toBeInTheDocument()
   })
 })

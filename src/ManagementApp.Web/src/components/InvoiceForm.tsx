@@ -88,9 +88,6 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
 
         <Section title="Details">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Invoice number" htmlFor="invoiceNumber" error={errors.invoiceNumber?.message}>
-              <input id="invoiceNumber" {...register('invoiceNumber')} aria-invalid={!!errors.invoiceNumber} placeholder="INV-2026-001" className={inputClass} />
-            </Field>
             <Field label="Currency" htmlFor="currency" error={errors.currency?.message}>
               <select id="currency" {...register('currency')} className={inputClass}>
                 {currencyOptions.map((code) => (
@@ -104,7 +101,7 @@ export function InvoiceForm({ defaultValues, onSubmit, onCancel, submitLabel, su
             <Field label="Due date" htmlFor="dueDate" error={errors.dueDate?.message}>
               <input id="dueDate" type="date" {...register('dueDate')} aria-invalid={!!errors.dueDate} className={inputClass} />
             </Field>
-            <Field label="Payment terms" htmlFor="paymentTerms" error={errors.paymentTerms?.message} className="sm:col-span-2">
+            <Field label="Payment terms" htmlFor="paymentTerms" error={errors.paymentTerms?.message}>
               <input id="paymentTerms" {...register('paymentTerms')} placeholder="Net 30" className={inputClass} />
             </Field>
           </div>

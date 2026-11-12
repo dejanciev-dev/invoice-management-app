@@ -11,7 +11,6 @@ const adjustmentType = z.enum(['Flat', 'Percentage'])
 
 export const invoiceFormSchema = z
   .object({
-    invoiceNumber: z.string().trim().min(1, 'Invoice number is required').max(50),
     currency: z.string().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code'),
     issueDate: z.string().min(1, 'Issue date is required'),
     dueDate: z.string(),
@@ -55,7 +54,6 @@ export const emptyItem = { description: '', quantity: 1, unitPrice: 0 }
 
 /** The company's defaults for new invoices (see the tenant settings). */
 export interface InvoiceDefaults {
-  invoiceNumber: string
   currency: string
   paymentTermsDays: number
   taxRate: number
@@ -69,7 +67,6 @@ export const paymentTermsLabel = (days: number) => (days === 0 ? 'Due on receipt
 export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: InvoiceDefaults): InvoiceFormValues {
   const termsDays = defaults?.paymentTermsDays ?? 30
   return {
-    invoiceNumber: defaults?.invoiceNumber ?? '',
     currency: defaults?.currency ?? 'USD',
     issueDate: today,
     dueDate: addDays(today, termsDays),
@@ -89,7 +86,6 @@ export function newInvoiceValues(today = toIsoDate(new Date()), defaults?: Invoi
 
 export function invoiceToValues(invoice: Invoice): InvoiceFormValues {
   return {
-    invoiceNumber: invoice.invoiceNumber,
     currency: invoice.currency,
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate ?? '',
