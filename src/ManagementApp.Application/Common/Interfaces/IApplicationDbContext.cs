@@ -22,6 +22,9 @@ public interface IApplicationDbContext
     /// <summary>One row per tenant; see <see cref="Invoices.InvoiceNumbering"/>.</summary>
     DbSet<InvoiceNumberSequence> InvoiceNumberSequences { get; }
 
+    /// <summary>Read-only access for queries; payments are added and removed through their <see cref="Invoice"/>.</summary>
+    DbSet<Payment> Payments { get; }
+
     DbSet<Tenant> Tenants { get; }
 
     DbSet<TenantMembership> TenantMemberships { get; }

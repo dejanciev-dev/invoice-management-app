@@ -61,5 +61,20 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(i => i.Items).AutoInclude();
+
+        // Payments belong to the invoice and are only changed through it; loaded with it so AmountPaid can be recomputed.
+        builder.HasMany(i => i.Payments)
+            .WithOne()
+            .HasForeignKey(p => p.InvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(i => i.Payments).AutoInclude().UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Moved on by ApplicationDbContext whenever the invoice row changes, so two people changing the same invoice at
+        // once (e.g. recording payments) cannot overwrite each other: the second save fails instead.
+        builder.Property<int>(ConcurrencyVersion).IsConcurrencyToken();
     }
+
+    /// <summary>EF shadow property used as the invoice's optimistic concurrency token.</summary>
+    public const string ConcurrencyVersion = "Version";
 }

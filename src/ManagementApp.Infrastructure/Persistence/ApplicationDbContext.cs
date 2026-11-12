@@ -28,6 +28,8 @@ public class ApplicationDbContext(
 
     public DbSet<InvoiceNumberSequence> InvoiceNumberSequences => Set<InvoiceNumberSequence>();
 
+    public DbSet<Payment> Payments => Set<Payment>();
+
     public DbSet<Tenant> Tenants => Set<Tenant>();
 
     public DbSet<TenantMembership> TenantMemberships => Set<TenantMembership>();
@@ -47,6 +49,7 @@ public class ApplicationDbContext(
     {
         EnforceTenantBoundaries();
         StoreInvoiceTotals();
+        BumpInvoiceVersions();
         SetAuditFields();
         return base.SaveChangesAsync(cancellationToken);
     }
@@ -55,6 +58,7 @@ public class ApplicationDbContext(
     {
         EnforceTenantBoundaries();
         StoreInvoiceTotals();
+        BumpInvoiceVersions();
         SetAuditFields();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -133,6 +137,19 @@ public class ApplicationDbContext(
             {
                 property.CurrentValue = value;
             }
+        }
+    }
+
+    /// <summary>
+    /// Moves the concurrency version of every invoice whose row is being updated. The update only applies when the row
+    /// still has the version that was read, so of two simultaneous changes the second fails with a concurrency error.
+    /// </summary>
+    private void BumpInvoiceVersions()
+    {
+        foreach (var entry in ChangeTracker.Entries<Invoice>().Where(e => e.State == EntityState.Modified))
+        {
+            var version = entry.Property<int>(Configurations.InvoiceConfiguration.ConcurrencyVersion);
+            version.CurrentValue = version.OriginalValue + 1;
         }
     }
 

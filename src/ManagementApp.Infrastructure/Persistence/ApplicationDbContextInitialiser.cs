@@ -280,7 +280,6 @@ public class ApplicationDbContextInitialiser(
         ]);
         websiteRedesign.Tax = 20;
         websiteRedesign.TaxType = TaxType.Percentage;
-        websiteRedesign.AmountPaid = websiteRedesign.Total;
 
         var mobileApp = NewInvoice("fabrikam", 45, 14);
         mobileApp.ReplaceItems(
@@ -297,7 +296,6 @@ public class ApplicationDbContextInitialiser(
             new InvoiceItem { Description = "Managed hosting (months)", Quantity = 3, UnitPrice = 149 },
             new InvoiceItem { Description = "SSL certificate", Quantity = 1, UnitPrice = 60 }
         ]);
-        hosting.AmountPaid = 200;
 
         var consulting = NewInvoice("tailspin", 3, 30);
         consulting.ReplaceItems(
@@ -316,6 +314,11 @@ public class ApplicationDbContextInitialiser(
         websiteRedesign.Issue(IssuedOn(websiteRedesign.IssueDate), "INV-2026-001");
         mobileApp.Issue(IssuedOn(mobileApp.IssueDate), "INV-2026-002");
         hosting.Issue(IssuedOn(hosting.IssueDate), "INV-2026-003");
+
+        // Payments as they came in: the website redesign is paid in full, hosting has a first instalment.
+        websiteRedesign.RecordPayment(
+            websiteRedesign.Total, websiteRedesign.IssueDate.AddDays(21), PaymentMethod.BankTransfer, "REMIT-4471", null, today);
+        hosting.RecordPayment(200, hosting.IssueDate.AddDays(5), PaymentMethod.Card, "Visa •••• 4242", null, today);
 
         return [websiteRedesign, mobileApp, hosting, consulting];
     }

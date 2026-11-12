@@ -14,7 +14,8 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task SavingAnInvoice_StoresItsCalculatedTotals()
     {
-        var invoice = NewInvoice(amountPaid: 50, discount: 10, tax: 20, Item(2, 150.50m));
+        var invoice = NewInvoice(discount: 10, tax: 20, Item(2, 150.50m));
+        MoveTo(invoice, InvoiceState.Issued, paid: 50);
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(CancellationToken);
 
@@ -27,7 +28,7 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task ReplacingOnlyTheItems_RefreshesTheStoredTotals()
     {
-        var invoice = NewInvoice(amountPaid: 0, discount: 0, tax: 0, Item(1, 100m));
+        var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(CancellationToken);
 
@@ -41,33 +42,70 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task RecordingAPayment_RefreshesTheStoredBalance()
     {
-        var invoice = NewInvoice(amountPaid: 0, discount: 0, tax: 0, Item(1, 100m));
+        var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
+        MoveTo(invoice, InvoiceState.Issued);
         Context.Invoices.Add(invoice);
         await Context.SaveChangesAsync(CancellationToken);
 
-        invoice.AmountPaid = 100;
+        invoice.RecordPayment(60, Today, PaymentMethod.Cash, null, null, Today);
+        invoice.RecordPayment(40, Today, PaymentMethod.Card, "4242", null, Today);
         await Context.SaveChangesAsync(CancellationToken);
 
         (await ReadStoredAsync(invoice.Id)).ShouldBe((100m, 0m));
+        await using var readContext = CreateContext();
+        var stored = await readContext.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoice.Id, CancellationToken);
+        stored.Payments.Select(p => (p.Amount, p.Method)).ShouldBe([(60m, PaymentMethod.Cash), (40m, PaymentMethod.Card)]);
+        stored.Payments.ShouldAllBe(p => p.TenantId == TenantId);
+        stored.AmountPaid.ShouldBe(100m);
+    }
+
+    [Fact]
+    public async Task TwoSimultaneousChangesToOneInvoice_DoNotOverwriteEachOther()
+    {
+        var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
+        MoveTo(invoice, InvoiceState.Issued);
+        Context.Invoices.Add(invoice);
+        await Context.SaveChangesAsync(CancellationToken);
+
+        // Two people open the same invoice and each records the full amount.
+        await using var first = CreateContext();
+        await using var second = CreateContext();
+        var firstCopy = await first.Invoices.SingleAsync(i => i.Id == invoice.Id, CancellationToken);
+        var secondCopy = await second.Invoices.SingleAsync(i => i.Id == invoice.Id, CancellationToken);
+        firstCopy.RecordPayment(100, Today, PaymentMethod.Cash, null, null, Today);
+        secondCopy.RecordPayment(100, Today, PaymentMethod.Cash, null, null, Today);
+
+        await first.SaveChangesAsync(CancellationToken);
+        await Should.ThrowAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync(CancellationToken));
+
+        await using var readContext = CreateContext();
+        var stored = await readContext.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoice.Id, CancellationToken);
+        stored.Payments.ShouldHaveSingleItem();
+        stored.AmountPaid.ShouldBe(100m);
     }
 
     [Fact]
     public async Task TheSqlStatusFilter_AgreesWithTheDomainForEveryCombination()
     {
-        // Every combination of draft / issued / void, paid / part-paid / unpaid / overpaid, and no, past, today's and
+        // Every combination of draft / issued / void, paid / part-paid / unpaid, and no, past, today's and
         // future due dates.
         InvoiceState[] states = [InvoiceState.Draft, InvoiceState.Issued, InvoiceState.Void];
         DateOnly?[] dueDates = [null, Today.AddDays(-1), Today, Today.AddDays(1)];
-        decimal[] payments = [0m, 40m, 100m, 120m];
+        decimal[] payments = [0m, 40m, 100m];
         foreach (var state in states)
         {
             foreach (var dueDate in dueDates)
             {
                 foreach (var paid in payments)
                 {
-                    var invoice = NewInvoice(amountPaid: paid, discount: 0, tax: 0, Item(1, 100m));
+                    if (state == InvoiceState.Draft && paid > 0)
+                    {
+                        continue; // drafts cannot be paid
+                    }
+
+                    var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
                     invoice.DueDate = dueDate;
-                    MoveTo(invoice, state);
+                    MoveTo(invoice, state, paid);
                     Context.Invoices.Add(invoice);
                 }
             }
@@ -89,7 +127,7 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
     [Fact]
     public async Task TheLifecycle_IsStoredAndReadBack()
     {
-        var invoice = NewInvoice(amountPaid: 0, discount: 0, tax: 0, Item(1, 100m));
+        var invoice = NewInvoice(discount: 0, tax: 0, Item(1, 100m));
         var issuedAt = new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
         invoice.Issue(issuedAt, "INV-001");
         invoice.Void(issuedAt.AddDays(2), "Duplicate");
@@ -105,12 +143,17 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
         stored.VoidReason.ShouldBe("Duplicate");
     }
 
-    private static void MoveTo(Invoice invoice, InvoiceState state)
+    private static void MoveTo(Invoice invoice, InvoiceState state, decimal paid = 0)
     {
         var now = new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
         if (state != InvoiceState.Draft)
         {
             invoice.Issue(now, $"INV-{Guid.NewGuid():N}");
+        }
+
+        if (paid > 0)
+        {
+            invoice.RecordPayment(paid, Today, PaymentMethod.BankTransfer, null, null, Today);
         }
 
         if (state == InvoiceState.Void)
@@ -130,7 +173,7 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
             .SingleAsync(CancellationToken);
     }
 
-    private static Invoice NewInvoice(decimal amountPaid, decimal discount, decimal tax, params InvoiceItem[] items)
+    private static Invoice NewInvoice(decimal discount, decimal tax, params InvoiceItem[] items)
     {
         var invoice = new Invoice
         {
@@ -138,7 +181,6 @@ public sealed class InvoiceTotalsTests : SqliteDbContextTest
             From = "Acme Ltd",
             To = "Globex Corporation",
             IssueDate = new DateOnly(2026, 2, 1),
-            AmountPaid = amountPaid,
             Discount = discount,
             DiscountType = DiscountType.Percentage,
             Tax = tax,
