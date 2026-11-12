@@ -95,7 +95,8 @@ All companies share one database. Isolation is enforced on the server, at severa
 2. **Authorization.** Tenant endpoints require a permission (`Permission:InvoicesDelete`, ...) in the resolved tenant. The platform admin area requires a separate platform-admin flag, runs with no tenant context, and is closed while impersonating.
 3. **Query filters.** Every entity implementing `ITenantEntity` (invoices, memberships, invitations, logos, and any future customers, products or payments) automatically gets an EF Core global query filter on the current tenant. A test fails if a tenant entity is ever added without one. Without a tenant, the filters match nothing.
 4. **Write guard.** `SaveChanges` stamps new tenant data with the current tenant and refuses to insert, update, delete or move data that belongs to another tenant.
-5. **Background jobs** run each tenant in its own DI scope with the tenant set explicitly (`TenantJobRunner`), so they go through the same filters. Notifications are always addressed to a specific tenant and use that tenant's sender details.
+5. **Stored files** (e.g. generated PDFs) go through `IFileStorage`, which only takes a tenant and a path within it. Every key is built as `tenants/{tenantId}/{path}` from simple path segments, so code cannot name another company's file, even by mistake. Deleting a company deletes its files.
+6. **Background jobs** run each tenant in its own DI scope with the tenant set explicitly (`TenantJobRunner`), so they go through the same filters. Notifications are always addressed to a specific tenant and use that tenant's sender details.
 
 Users are global accounts that join tenants through **memberships** (role and permissions per tenant), so one person can work for several companies. A tenant can only edit an account's name or reset its password when that account belongs to that tenant alone. Members can't grant permissions they don't have, only admins can manage other admins, and every company keeps at least one active admin.
 
@@ -130,6 +131,7 @@ npm run dev
 ```
 
 The interactive API reference is at <http://localhost:5080/scalar> in Development.
+**File storage.** Files are kept on the local disk by default (`App_Data/files` under the API, or the `files` volume in Docker). To use Azure Blob Storage, set `FileStorage__Provider=AzureBlob`, `FileStorage__AzureConnectionString` and optionally `FileStorage__AzureContainerName` (default `files`); the container is created on first use and is never public. The Blob Storage tests run when `FILESTORAGE_TEST_AZURE` holds a connection string, e.g. `UseDevelopmentStorage=true` with [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) running.
 
 ## Running the tests
 

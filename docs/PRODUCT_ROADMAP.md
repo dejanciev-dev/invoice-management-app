@@ -658,7 +658,7 @@ Suggested labels: `phase:2`…`phase:7`, `area:backend`, `area:frontend`, `area:
 - [x] Gap-free numbering assigned on issue (sequence table) `area:db` `P0`
 - [x] Credit notes `P1`
 - [x] Payment entity, record/delete payment, migrate `AmountPaid` `P0`
-- [ ] `IFileStorage` with Blob/S3 implementation and tenant-prefixed keys `P0`
+- [x] `IFileStorage` with Blob/S3 implementation and tenant-prefixed keys `P0`
 - [ ] PDF rendering with tenant branding (QuestPDF) `P0`
 - [ ] Email provider adapter + `EmailMessages` outbox + delivery status `P0`
 - [ ] "Send invoice" flow with preview `area:frontend` `P0`
