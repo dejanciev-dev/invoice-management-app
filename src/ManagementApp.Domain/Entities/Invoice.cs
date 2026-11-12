@@ -73,6 +73,14 @@ public class Invoice : AuditableEntity, ITenantEntity
     /// <summary>Money received, oldest first. Changed only by <see cref="RecordPayment"/> and <see cref="RemovePayment"/>.</summary>
     public IReadOnlyList<Payment> Payments => _payments;
 
+    /// <summary>The sum of <see cref="CreditNotes"/>, kept as a column so lists and filters can use it in SQL.</summary>
+    public decimal CreditedAmount { get; private set; }
+
+    private readonly List<CreditNote> _creditNotes = [];
+
+    /// <summary>Credit notes issued against this invoice. Added only by <see cref="IssueCreditNote"/>, never removed.</summary>
+    public IReadOnlyList<CreditNote> CreditNotes => _creditNotes;
+
     public decimal Subtotal => Items.Sum(i => i.Amount);
 
     /// <summary>A flat discount is capped at the subtotal so the total never goes negative.</summary>
@@ -91,18 +99,19 @@ public class Invoice : AuditableEntity, ITenantEntity
 
     public decimal Total => Subtotal - DiscountAmount + TaxAmount;
 
-    public decimal BalanceDue => Total - AmountPaid;
+    /// <summary>What is still owed: the total less payments received and credit notes issued.</summary>
+    public decimal BalanceDue => Total - AmountPaid - CreditedAmount;
 
     public bool IsDraft => State == InvoiceState.Draft;
 
-    public InvoiceStatus GetStatus(DateOnly today) => StatusFor(State, BalanceDue, AmountPaid, DueDate, today);
+    public InvoiceStatus GetStatus(DateOnly today) => StatusFor(State, BalanceDue, AmountPaid, CreditedAmount, DueDate, today);
 
     /// <summary>
     /// The status rule on its own, for callers that only have the stored figures (e.g. a list projected from SQL).
     /// The SQL filter in the application layer mirrors this rule and is tested against it.
     /// </summary>
     public static InvoiceStatus StatusFor(
-        InvoiceState state, decimal balanceDue, decimal amountPaid, DateOnly? dueDate, DateOnly today)
+        InvoiceState state, decimal balanceDue, decimal amountPaid, decimal creditedAmount, DateOnly? dueDate, DateOnly today)
     {
         if (state == InvoiceState.Draft)
         {
@@ -116,7 +125,7 @@ public class Invoice : AuditableEntity, ITenantEntity
 
         if (balanceDue <= 0)
         {
-            return InvoiceStatus.Paid;
+            return amountPaid <= 0 && creditedAmount > 0 ? InvoiceStatus.Credited : InvoiceStatus.Paid;
         }
 
         if (dueDate is { } due && due < today)
@@ -191,6 +200,12 @@ public class Invoice : AuditableEntity, ITenantEntity
             throw new DomainRuleException("A reason is required to void an invoice.");
         }
 
+        if (_creditNotes.Count > 0)
+        {
+            throw new DomainRuleException(
+                $"Invoice {InvoiceNumber} has credit notes, which already correct it. It can no longer be voided; credit the rest instead.");
+        }
+
         State = InvoiceState.Void;
         VoidedAt = now;
         VoidReason = reason.Trim();
@@ -237,6 +252,54 @@ public class Invoice : AuditableEntity, ITenantEntity
         _payments.Remove(payment);
         AmountPaid = _payments.Sum(p => p.Amount);
         return payment;
+    }
+
+    /// <summary>
+    /// Credits part or all of what is still due on an issued invoice under <paramref name="number"/>, the next number
+    /// of the company's credit note sequence. The tax part is in the same proportion as on the invoice, so a full
+    /// credit reverses exactly the invoice's tax. Credit notes cannot be more than the balance due: money already
+    /// received is refunded outside the app.
+    /// </summary>
+    public CreditNote IssueCreditNote(string number, decimal amount, DateOnly date, string reason, DateOnly today)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+
+        if (State != InvoiceState.Issued)
+        {
+            throw new DomainRuleException(
+                $"Credit notes can only be issued against issued invoices; this one is {Describe(State)}.");
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainRuleException("A credit note needs a reason.");
+        }
+
+        if (amount <= 0)
+        {
+            throw new DomainRuleException("A credit note must be for more than zero.");
+        }
+
+        if (amount > BalanceDue)
+        {
+            throw new DomainRuleException(
+                FormattableString.Invariant($"The credit of {amount:0.00} {Currency} is more than the {BalanceDue:0.00} {Currency} still due."));
+        }
+
+        if (date > today)
+        {
+            throw new DomainRuleException("A credit note cannot be dated in the future.");
+        }
+
+        // The credit that clears an unpaid invoice takes exactly the tax not credited yet, so rounding on earlier
+        // partial credits never leaves a cent of tax behind.
+        var taxAmount = amount == BalanceDue && AmountPaid == 0
+            ? TaxAmount - _creditNotes.Sum(c => c.TaxAmount)
+            : Total > 0 ? Money.Round(amount * TaxAmount / Total) : 0m;
+        var creditNote = new CreditNote(TenantId, number, date, reason.Trim(), amount, taxAmount);
+        _creditNotes.Add(creditNote);
+        CreditedAmount = _creditNotes.Sum(c => c.Amount);
+        return creditNote;
     }
 
     private void EnsurePaymentsCanChange()

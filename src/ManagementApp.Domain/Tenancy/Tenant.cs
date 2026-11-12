@@ -91,8 +91,15 @@ public class TenantInvoiceSettings
     /// <summary>A hex colour such as #4f46e5, used for invoice branding.</summary>
     public string? BrandColor { get; set; }
 
-    public string FormatNumber(int sequence) =>
-        $"{NumberPrefix}{sequence.ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(Math.Clamp(NumberPadding, 1, 10), '0')}";
+    /// <summary>Put in front of every credit note number; the padding is the same as for invoices.</summary>
+    public string CreditNotePrefix { get; set; } = "CN-";
+
+    public string FormatCreditNoteNumber(int sequence) => Format(CreditNotePrefix, sequence);
+
+    public string FormatNumber(int sequence) => Format(NumberPrefix, sequence);
+
+    private string Format(string prefix, int sequence) =>
+        $"{prefix}{sequence.ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(Math.Clamp(NumberPadding, 1, 10), '0')}";
 }
 
 public class TenantEmailSettings
