@@ -655,7 +655,7 @@ Suggested labels: `phase:2`…`phase:7`, `area:backend`, `area:frontend`, `area:
 - [x] Migrate existing invoice "To" text into customers `area:db` `P0`
 - [x] Product & service catalogue `P0`
 - [x] Invoice lifecycle (Draft/Issued/Void) with domain state machine `P0`
-- [ ] Gap-free numbering assigned on issue (sequence table) `area:db` `P0`
+- [x] Gap-free numbering assigned on issue (sequence table) `area:db` `P0`
 - [ ] Credit notes `P1`
 - [ ] Payment entity, record/delete payment, migrate `AmountPaid` `P0`
 - [ ] `IFileStorage` with Blob/S3 implementation and tenant-prefixed keys `P0`

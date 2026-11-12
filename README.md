@@ -29,6 +29,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Calculated totals and status:** subtotal, discount, tax, total, balance due and status (Draft, Unpaid, Partially paid, Paid, Overdue, Void) are calculated in the domain model, so the API and UI always agree.
 - **Live preview:** the editor recalculates totals as you type, using the same half-away-from-zero rounding as the server.
 - **Invoice lifecycle:** new invoices are drafts that can be edited or deleted. Issuing one makes it final: it can no longer be edited or deleted, only have payments recorded or be voided with a reason, so it stays on record. Drafts and void invoices are left out of outstanding, overdue and billed totals and of overdue reminders. Every transition is audited. Invoices that existed before the lifecycle were marked issued when upgrading.
+- **Gap-free invoice numbering:** drafts have no number. Issuing takes the next number from the company's sequence (prefix, running number, padding) inside the same transaction, so issued numbers are consecutive even when several people issue at once, and a failed issue gives its number back. The next number can be moved forward in the settings, and back only together with a new prefix (e.g. a new year's series).
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
 - **CSV export** and a **print-friendly invoice view.**
 - **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Picking a customer in the invoice editor fills in "Bill to", currency, terms and due date; the invoice keeps its own copy of those details. Each customer's page lists their invoices. Deleting a customer only hides it, so invoice history stays intact. Existing invoices were linked to customers created from their "Bill to" text when upgrading.
@@ -159,7 +160,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` | `/api/invoices/{id}` | Invoice with items and totals |
 | `POST` | `/api/invoices` | Create a draft invoice |
 | `PUT` | `/api/invoices/{id}` | Update a draft (409 Conflict once issued) |
-| `DELETE` | `/api/invoices/{id}` | Delete a draft (409 Conflict once issued: void it instead) |
+| `POST` | `/api/invoices/{id}/issue` | Issue a draft under the next number of the company's sequence: it becomes final and payable |
 | `POST` | `/api/invoices/{id}/issue` | Issue a draft: it becomes final and payable |
 | `POST` | `/api/invoices/{id}/void` | Void an issued invoice, with a `reason` |
 | `PUT` | `/api/invoices/{id}/amount-paid` | Set the amount received on an issued invoice |
