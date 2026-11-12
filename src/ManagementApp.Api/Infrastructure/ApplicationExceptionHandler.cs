@@ -1,6 +1,7 @@
 using FluentValidation;
 using ManagementApp.Application.Common.Exceptions;
 using ManagementApp.Domain.Common;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,6 +36,12 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problemDe
                 Status = StatusCodes.Status409Conflict,
                 Title = "This is not possible in the current state.",
                 Detail = rule.Message
+            },
+            DbUpdateConcurrencyException => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Someone else changed this at the same time.",
+                Detail = "Your change was not saved. Reload to see the latest version and try again."
             },
             UnauthorizedAccessException => new ProblemDetails
             {

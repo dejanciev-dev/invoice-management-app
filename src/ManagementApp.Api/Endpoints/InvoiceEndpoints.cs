@@ -37,8 +37,10 @@ public static class InvoiceEndpoints
             .WithSummary("Issue a draft: it becomes final and payable");
         group.MapPost("/{id:int}/void", VoidInvoice).RequireAuthorization(Policies.Has(Permission.InvoicesDelete))
             .WithSummary("Void an issued invoice, with a reason");
-        group.MapPut("/{id:int}/amount-paid", RecordAmountPaid).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
-            .WithSummary("Set the amount received on an issued invoice");
+        group.MapPost("/{id:int}/payments", RecordPayment).RequireAuthorization(Policies.Has(Permission.InvoicesEdit))
+            .WithSummary("Record a payment on an issued invoice (not more than the balance due)");
+        group.MapDelete("/{id:int}/payments/{paymentId:int}", DeletePayment).RequireAuthorization(Policies.Has(Permission.InvoicesDelete))
+            .WithSummary("Delete a payment recorded by mistake");
 
         return app;
     }
@@ -80,9 +82,13 @@ public static class InvoiceEndpoints
         int id, VoidInvoiceCommand command, VoidInvoiceHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
 
-    private static async Task<Ok<InvoiceDto>> RecordAmountPaid(
-        int id, RecordAmountPaidCommand command, RecordAmountPaidHandler handler, CancellationToken cancellationToken) =>
+    private static async Task<Ok<InvoiceDto>> RecordPayment(
+        int id, RecordPaymentCommand command, RecordPaymentHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(id, command, cancellationToken));
+
+    private static async Task<Ok<InvoiceDto>> DeletePayment(
+        int id, int paymentId, DeletePaymentHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, paymentId, cancellationToken));
 
     private static async Task<NoContent> DeleteInvoice(
         int id, DeleteInvoiceHandler handler, CancellationToken cancellationToken)

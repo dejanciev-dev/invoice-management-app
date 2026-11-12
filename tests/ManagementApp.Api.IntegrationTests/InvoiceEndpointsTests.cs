@@ -31,8 +31,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
             Discount = 10,
             DiscountType = DiscountType.Percentage,
             Tax = 20,
-            TaxType = TaxType.Percentage,
-            AmountPaid = 50
+            TaxType = TaxType.Percentage
         }, ApiFactory.Json, CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -46,7 +45,8 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
         invoice.DiscountAmount.ShouldBe(30.10m);
         invoice.TaxAmount.ShouldBe(54.18m);
         invoice.Total.ShouldBe(325.08m);
-        invoice.BalanceDue.ShouldBe(275.08m);
+        invoice.BalanceDue.ShouldBe(325.08m);
+        invoice.Payments.ShouldBeEmpty();
         invoice.Status.ShouldBe(InvoiceStatus.Draft);
         invoice.State.ShouldBe(InvoiceState.Draft);
         invoice.IssuedAt.ShouldBeNull();
@@ -133,7 +133,7 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     public async Task GetInvoices_FiltersBySearchAndStatus()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-        await client.CreateIssuedInvoiceAsync(NewInvoice() with { To = "Globex", AmountPaid = 301 }); // INV-0001
+        await client.CreatePaidInvoiceAsync(NewInvoice() with { To = "Globex" }, 301); // INV-0001
         await client.CreateIssuedInvoiceAsync(NewInvoice() with { To = "Initech late", DueDate = ApiFactory.Today.AddDays(-1), IssueDate = ApiFactory.Today.AddDays(-10) }); // INV-0002
         await CreateAsync(client, NewInvoice() with { To = "Initech draft" });
 
