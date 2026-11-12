@@ -9,7 +9,7 @@ import type { CurrentTenant, Invoice } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { inputClass } from '../components/styles'
 import { Alert, Button, ButtonLink, Card, Field, Spinner } from '../components/ui'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney, invoiceTitle } from '../lib/format'
 import { formatDateTime } from '../lib/labels'
 import { NotFoundPage } from './NotFoundPage'
 
@@ -44,7 +44,7 @@ function InvoiceDetails({ id }: { id: number }) {
           )}
         </p>
       )}
-      <StateNotice invoice={invoice} />
+      <StateNotice invoice={invoice} nextInvoiceNumber={tenant?.nextInvoiceNumber} />
       <InvoiceDocument invoice={invoice} tenant={tenant} />
     </>
   )
@@ -79,7 +79,7 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
         </Link>
         {mode === 'delete' ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm">Delete draft {invoice.invoiceNumber}?</span>
+            <span className="text-sm">Delete this draft?</span>
             <Button variant="secondary" onClick={done}>
               Cancel
             </Button>
@@ -225,11 +225,12 @@ function PaymentForm({ invoice, onDone }: { invoice: Invoice; onDone: () => void
 }
 
 /** Explains what the invoice's state means for the user, above the document. */
-function StateNotice({ invoice }: { invoice: Invoice }) {
+function StateNotice({ invoice, nextInvoiceNumber }: { invoice: Invoice; nextInvoiceNumber?: string }) {
   if (invoice.state === 'Draft') {
     return (
       <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-200 print:hidden">
-        This invoice is a draft. Issue it when it's ready to send: after that it can no longer be edited or deleted.
+        This invoice is a draft. Issuing it gives it the next invoice number{nextInvoiceNumber && <> ({nextInvoiceNumber})</>} and makes it
+        final: after that it can no longer be edited or deleted.
       </p>
     )
   }
@@ -261,7 +262,7 @@ function InvoiceDocument({ invoice, tenant }: { invoice: Invoice; tenant?: Curre
           <p className="text-sm font-medium tracking-wide text-muted uppercase" style={brandColor ? { color: brandColor } : undefined}>
             Invoice
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{invoice.invoiceNumber}</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{invoiceTitle(invoice)}</h1>
           <div className="mt-3">
             <StatusBadge status={invoice.status} />
           </div>

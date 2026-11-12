@@ -12,7 +12,6 @@ describe('newInvoiceValues', () => {
 
   it("starts from the company's defaults", () => {
     const values = newInvoiceValues('2026-01-15', {
-      invoiceNumber: 'INV-0042',
       currency: 'GBP',
       paymentTermsDays: 14,
       taxRate: 20,
@@ -21,7 +20,6 @@ describe('newInvoiceValues', () => {
     })
 
     expect(values).toMatchObject({
-      invoiceNumber: 'INV-0042',
       currency: 'GBP',
       dueDate: '2026-01-29',
       paymentTerms: 'Net 14',
@@ -36,7 +34,6 @@ describe('newInvoiceValues', () => {
 describe('invoiceFormSchema', () => {
   const valid = {
     ...newInvoiceValues('2026-01-15'),
-    invoiceNumber: 'INV-001',
     from: 'Acme Ltd',
     to: 'Globex',
     items: [{ description: 'Design', quantity: 1, unitPrice: 100 }],
@@ -83,7 +80,7 @@ describe('valuesToRequest', () => {
 describe('toFieldPath', () => {
   it('converts API error paths into form field paths', () => {
     expect(toFieldPath('items[2].unitPrice')).toBe('items.2.unitPrice')
-    expect(toFieldPath('invoiceNumber')).toBe('invoiceNumber')
+    expect(toFieldPath('currency')).toBe('currency')
     expect(toFieldPath('customerId')).toBe('customer')
   })
 })

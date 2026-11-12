@@ -10,7 +10,7 @@ import type { Customer } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { Alert, Button, ButtonLink, Card, EmptyRow, Pager, Spinner, tableClass, tdClass, thClass, theadClass } from '../components/ui'
 import { errorText } from '../lib/errors'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney, invoiceTitle } from '../lib/format'
 import { NotFoundPage } from './NotFoundPage'
 
 export function CustomerDetailsPage() {
@@ -84,7 +84,7 @@ function CustomerInvoices({ customerId }: { customerId: number }) {
                     <tr key={invoice.id}>
                       <td className={`${tdClass} font-medium whitespace-nowrap`}>
                         <Link to={`/invoices/${invoice.id}`} className="hover:text-brand">
-                          {invoice.invoiceNumber}
+                          {invoiceTitle(invoice)}
                         </Link>
                       </td>
                       <td className={`${tdClass} hidden whitespace-nowrap text-muted sm:table-cell`}>{formatDate(invoice.issueDate)}</td>

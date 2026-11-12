@@ -16,7 +16,8 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: number
-  invoiceNumber: string
+  /** Null while a draft: issuing assigns the next number of the company's sequence. */
+  invoiceNumber: string | null
   from: string
   to: string
   issueDate: string
@@ -53,7 +54,7 @@ export interface InvoiceCustomer {
 
 export interface InvoiceSummary {
   id: number
-  invoiceNumber: string
+  invoiceNumber: string | null
   to: string
   issueDate: string
   dueDate: string | null
@@ -117,7 +118,6 @@ export interface InvoiceStats {
 }
 
 export interface SaveInvoiceRequest {
-  invoiceNumber: string
   customerId: number | null
   from: string
   to: string

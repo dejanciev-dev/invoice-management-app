@@ -8,7 +8,7 @@ import { StatusBadge } from '../components/StatusBadge'
 import { buttonClass, inputClass } from '../components/styles'
 import { statusLabels } from '../lib/status'
 import { Alert, ButtonLink, Card, PageHeader, Pager, Spinner } from '../components/ui'
-import { firstLine, formatDate, formatMoney, formatTotalsByCurrency } from '../lib/format'
+import { firstLine, formatDate, formatMoney, formatTotalsByCurrency, invoiceTitle } from '../lib/format'
 
 const statusFilters: (InvoiceStatus | undefined)[] = [undefined, 'Draft', 'Unpaid', 'PartiallyPaid', 'Overdue', 'Paid', 'Void']
 
@@ -180,7 +180,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceSummary[] }) {
             >
               <td className="px-4 py-3 font-medium whitespace-nowrap">
                 <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand">
-                  {invoice.invoiceNumber}
+                  {invoiceTitle(invoice)}
                 </Link>
                 {/* On phones the client is shown under the number instead of in its own column. */}
                 <span className="block font-normal text-muted sm:hidden">{firstLine(invoice.to)}</span>
