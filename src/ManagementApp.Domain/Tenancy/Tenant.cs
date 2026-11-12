@@ -68,9 +68,11 @@ public class Tenant : AuditableEntity
 
 public class TenantInvoiceSettings
 {
+    /// <summary>
+    /// Put in front of every invoice number. The running number itself is kept in
+    /// <see cref="Entities.InvoiceNumberSequence"/>.
+    /// </summary>
     public string NumberPrefix { get; set; } = "INV-";
-
-    public int NextNumber { get; set; } = 1;
 
     /// <summary>The sequence is zero-padded to this many digits, e.g. 4 gives INV-0001.</summary>
     public int NumberPadding { get; set; } = 4;
@@ -91,8 +93,6 @@ public class TenantInvoiceSettings
 
     public string FormatNumber(int sequence) =>
         $"{NumberPrefix}{sequence.ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(Math.Clamp(NumberPadding, 1, 10), '0')}";
-
-    public string SuggestedNextNumber => FormatNumber(NextNumber);
 }
 
 public class TenantEmailSettings

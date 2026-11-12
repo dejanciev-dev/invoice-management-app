@@ -87,7 +87,7 @@ public class InvoiceTests
     {
         var invoice = CreateInvoice(Item(1, 1000m));
         invoice.DueDate = dueInDays is { } days ? Today.AddDays(days) : null;
-        invoice.Issue(Now);
+        invoice.Issue(Now, "INV-001");
         invoice.RecordAmountPaid(amountPaid);
 
         invoice.GetStatus(Today).ShouldBe(expected);
@@ -101,6 +101,7 @@ public class InvoiceTests
         invoice.AmountPaid = 400;
 
         invoice.State.ShouldBe(InvoiceState.Draft);
+        invoice.InvoiceNumber.ShouldBeNull();
         invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Draft);
         Should.NotThrow(invoice.EnsureEditable);
         Should.NotThrow(invoice.EnsureDeletable);
@@ -111,13 +112,15 @@ public class InvoiceTests
     {
         var invoice = CreateInvoice(Item(1, 1000m));
 
-        invoice.Issue(Now);
+        invoice.Issue(Now, "INV-001");
 
         invoice.State.ShouldBe(InvoiceState.Issued);
         invoice.IssuedAt.ShouldBe(Now);
+        invoice.InvoiceNumber.ShouldBe("INV-001");
         Should.Throw<DomainRuleException>(invoice.EnsureEditable).Message.ShouldContain("Only drafts can be changed");
         Should.Throw<DomainRuleException>(invoice.EnsureDeletable).Message.ShouldContain("Void it instead");
-        Should.Throw<DomainRuleException>(() => invoice.Issue(Now)).Message.ShouldContain("already issued");
+        Should.Throw<DomainRuleException>(() => invoice.Issue(Now, "INV-002")).Message.ShouldContain("already issued");
+        invoice.InvoiceNumber.ShouldBe("INV-001");
     }
 
     [Fact]
@@ -125,7 +128,7 @@ public class InvoiceTests
     {
         var invoice = CreateInvoice();
 
-        Should.Throw<DomainRuleException>(() => invoice.Issue(Now));
+        Should.Throw<DomainRuleException>(() => invoice.Issue(Now, "INV-001"));
         invoice.State.ShouldBe(InvoiceState.Draft);
     }
 
@@ -133,7 +136,7 @@ public class InvoiceTests
     public void Void_ClosesAnIssuedInvoiceForGood()
     {
         var invoice = CreateInvoice(Item(1, 1000m));
-        invoice.Issue(Now);
+        invoice.Issue(Now, "INV-001");
 
         invoice.Void(Now.AddDays(1), "  Billed to the wrong customer ");
 
@@ -153,7 +156,7 @@ public class InvoiceTests
         var draft = CreateInvoice(Item(1, 1000m));
         Should.Throw<DomainRuleException>(() => draft.Void(Now, "Mistake")).Message.ShouldContain("Delete it instead");
 
-        draft.Issue(Now);
+        draft.Issue(Now, "INV-001");
         Should.Throw<DomainRuleException>(() => draft.Void(Now, " "));
         draft.State.ShouldBe(InvoiceState.Issued);
     }
@@ -164,7 +167,7 @@ public class InvoiceTests
         var invoice = CreateInvoice(Item(1, 1000m));
         Should.Throw<DomainRuleException>(() => invoice.RecordAmountPaid(100));
 
-        invoice.Issue(Now);
+        invoice.Issue(Now, "INV-001");
         invoice.RecordAmountPaid(1000);
 
         invoice.GetStatus(Today).ShouldBe(InvoiceStatus.Paid);
@@ -187,7 +190,6 @@ public class InvoiceTests
         var invoice = new Invoice
         {
             OwnerId = "owner",
-            InvoiceNumber = "INV-001",
             From = "Acme Ltd",
             To = "Globex Corporation",
             IssueDate = Today.AddDays(-14)
