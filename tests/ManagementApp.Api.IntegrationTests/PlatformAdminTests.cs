@@ -1,10 +1,12 @@
 using ManagementApp.Application.Accounts;
+using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Auditing;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Members;
 using ManagementApp.Application.Platform;
 using ManagementApp.Application.Tenants;
 using ManagementApp.Domain.Tenancy;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using static ManagementApp.Api.IntegrationTests.TestData;
 
@@ -92,7 +94,7 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
     }
 
     [Fact]
-    public async Task DeletingATenant_RequiresItToBeSwitchedOffAndNamed()
+    public async Task DeletingATenant_RequiresItToBeSwitchedOffAndNamed_AndRemovesItsFiles()
     {
         var tenant = await factory.CreateTenantAsync(companyName: "Doomed Ltd");
         await tenant.Client.CreateInvoiceAsync("INV-001");
@@ -104,6 +106,10 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         (await tenant.Client.DeleteAsync($"/api/products/{deletedProduct.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var (admin, _) = await factory.CreatePlatformAdminAsync();
         var url = $"/api/admin/tenants/{tenant.TenantId}";
+        var survivor = await factory.CreateTenantAsync();
+        var storage = factory.Services.GetRequiredService<IFileStorage>();
+        await storage.SaveAsync(tenant.TenantId, "invoices/1.pdf", new MemoryStream([1]), "application/pdf", Ct);
+        await storage.SaveAsync(survivor.TenantId, "invoices/1.pdf", new MemoryStream([2]), "application/pdf", Ct);
 
         var whileActive = await admin.DeleteAsync($"{url}?confirmName=Doomed%20Ltd", Ct);
         await admin.PutJsonAsync($"{url}/status", new ChangeTenantStatusCommand(TenantStatus.Inactive, "Closing"));
@@ -117,6 +123,9 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         var audit = await admin.GetAsync<PagedResult<AuditLogDto>>($"/api/admin/audit-logs?tenantId={tenant.TenantId}&action=tenant.deleted");
         audit.Items.ShouldHaveSingleItem();
         (await tenant.Client.GetAsync<SessionDto>("/api/me")).Tenants.ShouldBeEmpty();
+        (await storage.OpenReadAsync(tenant.TenantId, "invoices/1.pdf", Ct)).ShouldBeNull(); // its files went too
+        await using var survivorFile = await storage.OpenReadAsync(survivor.TenantId, "invoices/1.pdf", Ct);
+        survivorFile.ShouldNotBeNull();
     }
 
     [Fact]

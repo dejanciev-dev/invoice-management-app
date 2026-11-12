@@ -33,6 +33,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
+    /// <summary>Stored files go to a folder of their own per factory, removed when the factory is disposed.</summary>
+    public string FileStorageRoot { get; } = Path.Combine(Path.GetTempPath(), "api-tests-files", Guid.NewGuid().ToString("N"));
+
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(Today.ToDateTime(new TimeOnly(9, 0)), TimeSpan.Zero));
 
     /// <summary>Every notification the app sent, in order.</summary>
@@ -44,6 +47,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
         builder.UseEnvironment("Testing");
         builder.UseSetting("BackgroundJobs:Enabled", "false");
+        builder.UseSetting("FileStorage:Provider", "Local");
+        builder.UseSetting("FileStorage:LocalRootPath", FileStorageRoot);
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
@@ -133,6 +138,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         _connection.Dispose();
+        if (Directory.Exists(FileStorageRoot))
+        {
+            Directory.Delete(FileStorageRoot, recursive: true);
+        }
     }
 
     private sealed record AccessTokenResponse(string AccessToken);
