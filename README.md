@@ -33,7 +33,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Credit notes:** issued invoices are corrected with credit notes instead of edits. A credit note reduces the balance due by an amount (including tax, with the tax part split out in the invoice's proportion), has a reason and its own gap-free number (prefix `CN-` by default, set in the settings), and is final. An invoice whose balance was cleared only by credit notes shows as **Credited**, billed totals are shown net of credit notes, and an invoice with credit notes can no longer be voided.
 - **Gap-free invoice numbering:** drafts have no number. Issuing takes the next number from the company's sequence (prefix, running number, padding) inside the same transaction, so issued numbers are consecutive even when several people issue at once, and a failed issue gives its number back. The next number can be moved forward in the settings, and back only together with a new prefix (e.g. a new year's series).
 - **Search, status filters and dashboard stats:** outstanding, overdue and total billed, summed per currency.
-- **CSV export** and a **print-friendly invoice view.**
+- **CSV export**, a **print-friendly invoice view** and **branded PDFs** (logo, brand colour, sender details, tax label and footer). An issued invoice's PDF is made when it is issued, stored, and served unchanged from then on, so reprints match what the client received; drafts and void invoices are marked DRAFT or VOID.
 - **Customers:** contact details, billing address, tax number, and their own default currency and payment terms (falling back to the company's). Picking a customer in the invoice editor fills in "Bill to", currency, terms and due date; the invoice keeps its own copy of those details. Each customer's page lists their invoices. Deleting a customer only hides it, so invoice history stays intact. Existing invoices were linked to customers created from their "Bill to" text when upgrading.
 - **Products & services catalogue:** name, unit (hour, month, ...) and usual price. "Add from catalogue" in the invoice editor adds one as a line; the invoice keeps its own copy, so changing or deleting a product never alters existing invoices.
 - **Multi-tenant:** self-service sign-up creates a company on a 14-day trial. Users can belong to several companies and switch between them. Data is isolated on the server, never just hidden in the UI.
@@ -86,6 +86,7 @@ flowchart LR
 - **Status is calculated, not stored.** "Overdue" depends on today's date, so it is derived from the due date, total and amount paid using an injectable `TimeProvider`. This makes it deterministic in tests.
 - **Tenant isolation is enforced in the data layer.** See [Multi-tenancy](#multi-tenancy). Other tenants' invoices return `404`, not `403`, so their IDs are never revealed.
 - **Integration tests use real HTTP and a real relational database.** The API tests sign up companies through the API and run against in-memory SQLite with the real schema. They try cross-tenant access through IDs, headers and query strings, privilege escalation, and impersonation abuse.
+- **PDFs are made with [QuestPDF](https://www.questpdf.com/) under its Community licence**, which is free for organisations with less than USD 1M annual gross revenue. Above that, buy a licence and change `QuestPDF.Settings.License` in `QuestPdfInvoiceRenderer`.
 
 ## Multi-tenancy
 
@@ -171,6 +172,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `DELETE` | `/api/invoices/{id}/payments/{paymentId}` | Delete a payment recorded by mistake |
 | `POST` | `/api/invoices/{id}/credit-notes` | Issue a credit note against an issued invoice (amount incl. tax, date, reason) |
 | `GET` | `/api/invoices/export` | Download all invoices as CSV |
+| `GET` | `/api/invoices/{id}/pdf` | Download the invoice as a PDF |
 | `GET` | `/api/customers?search=&page=&pageSize=` | A page of customers, by name (search matches name, email or tax number) |
 | `GET` `POST` `PUT` `DELETE` | `/api/customers/...` | Get, create, update or delete a customer (deleted customers are hidden, not removed) |
 | `GET` | `/api/products?search=&page=&pageSize=` | A page of the catalogue, by name |
