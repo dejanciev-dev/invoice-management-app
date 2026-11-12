@@ -1,5 +1,6 @@
 using ManagementApp.Application.Accounts;
 using ManagementApp.Application.Common.Interfaces;
+using ManagementApp.Application.Emails;
 using ManagementApp.Application.Auditing;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Members;
@@ -110,6 +111,12 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         var storage = factory.Services.GetRequiredService<IFileStorage>();
         await storage.SaveAsync(tenant.TenantId, "invoices/1.pdf", new MemoryStream([1]), "application/pdf", Ct);
         await storage.SaveAsync(survivor.TenantId, "invoices/1.pdf", new MemoryStream([2]), "application/pdf", Ct);
+        await factory.WithServicesAsync(async services =>
+        {
+            // A queued email: the outbox rows must go with the company too.
+            await services.GetRequiredService<EmailOutbox>().QueueAsync(new QueuedEmail(tenant.TenantId, "client@example.com", "Hi", "Body"), Ct);
+            return await services.GetRequiredService<IApplicationDbContext>().SaveChangesAsync(Ct);
+        });
 
         var whileActive = await admin.DeleteAsync($"{url}?confirmName=Doomed%20Ltd", Ct);
         await admin.PutJsonAsync($"{url}/status", new ChangeTenantStatusCommand(TenantStatus.Inactive, "Closing"));

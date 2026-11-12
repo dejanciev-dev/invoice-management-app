@@ -26,6 +26,7 @@ const tenantNav: { to: string; label: string; permission: Permission; end?: bool
   { to: '/reports', label: 'Reports', permission: 'ReportsView' },
   { to: '/users', label: 'Users', permission: 'UsersManage' },
   { to: '/activity', label: 'Activity', permission: 'AuditLogView' },
+  { to: '/emails', label: 'Emails', permission: 'SettingsManage' },
   { to: '/settings', label: 'Settings', permission: 'SettingsManage' },
 ]
 

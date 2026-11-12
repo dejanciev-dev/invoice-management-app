@@ -277,6 +277,7 @@ public sealed class DeleteTenantHandler(
             var customers = await context.Customers.IgnoreQueryFilters().Where(c => c.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             var products = await context.Products.IgnoreQueryFilters().Where(p => p.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.InvoiceNumberSequences.IgnoreQueryFilters().Where(s => s.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+            await context.EmailMessages.IgnoreQueryFilters().Where(e => e.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantMemberships.IgnoreQueryFilters().Where(m => m.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantInvitations.IgnoreQueryFilters().Where(i => i.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await context.TenantLogos.IgnoreQueryFilters().Where(l => l.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
