@@ -142,17 +142,18 @@ public sealed class TenantIsolationTests : SqliteDbContextTest
         return invoice;
     }
 
+    /// <summary>An issued invoice, so it carries <paramref name="number"/>.</summary>
     private static Invoice NewInvoice(string number)
     {
         var invoice = new Invoice
         {
             OwnerId = UserId,
-            InvoiceNumber = number,
             From = "Acme Ltd",
             To = "Globex Corporation",
             IssueDate = new DateOnly(2026, 2, 1)
         };
         invoice.ReplaceItems([new InvoiceItem { Description = "Work", Quantity = 1, UnitPrice = 10 }]);
+        invoice.Issue(new DateTimeOffset(2026, 2, 1, 9, 0, 0, TimeSpan.Zero), number);
         return invoice;
     }
 }

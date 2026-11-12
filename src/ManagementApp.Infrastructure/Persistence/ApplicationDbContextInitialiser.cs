@@ -84,7 +84,6 @@ public class ApplicationDbContextInitialiser(
             tenant.TimeZone = "Europe/London";
             tenant.InvoiceSettings.NumberPrefix = "INV-2026-";
             tenant.InvoiceSettings.NumberPadding = 3;
-            tenant.InvoiceSettings.NextNumber = 5;
             tenant.InvoiceSettings.TaxLabel = "VAT";
             tenant.Subscription = TenantSubscription.Activate(SubscriptionPlans.Professional, BillingCycle.Yearly, now.AddYears(1));
         });
@@ -96,6 +95,7 @@ public class ApplicationDbContextInitialiser(
             await context.SaveChangesAsync(); // the invoices need the customers' ids
 
             context.Invoices.AddRange(CreateDemoInvoices(northwind.Id, demoUser.Id, customers));
+            context.InvoiceNumberSequences.Add(new InvoiceNumberSequence { TenantId = northwind.Id, NextNumber = 4 });
             await context.SaveChangesAsync();
         }
 
@@ -134,7 +134,6 @@ public class ApplicationDbContextInitialiser(
             {
                 TenantId = contoso.Id,
                 OwnerId = contosoOwner.Id,
-                InvoiceNumber = "INV-0001",
                 From = contoso.InvoiceSenderDetails(),
                 CustomerId = litware.Id,
                 To = BillTo(litware),
@@ -144,9 +143,9 @@ public class ApplicationDbContextInitialiser(
                 Currency = "USD"
             };
             invoice.ReplaceItems([new InvoiceItem { Description = "Strategy workshop", Quantity = 2, UnitPrice = 1500 }]);
-            invoice.Issue(IssuedOn(invoice.IssueDate));
+            invoice.Issue(IssuedOn(invoice.IssueDate), "INV-0001");
             context.Invoices.Add(invoice);
-            contoso.InvoiceSettings.NextNumber = 2;
+            context.InvoiceNumberSequences.Add(new InvoiceNumberSequence { TenantId = contoso.Id, NextNumber = 2 });
             await context.SaveChangesAsync();
         }
     }
@@ -260,11 +259,10 @@ public class ApplicationDbContextInitialiser(
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         const string from = "Northwind Studio\n42 Harbour Street\nLondon, UK";
 
-        Invoice NewInvoice(string number, string customerKey, int issuedDaysAgo, int dueInDays) => new()
+        Invoice NewInvoice(string customerKey, int issuedDaysAgo, int dueInDays) => new()
         {
             TenantId = tenantId,
             OwnerId = ownerId,
-            InvoiceNumber = number,
             From = from,
             CustomerId = customers[customerKey].Id,
             To = BillTo(customers[customerKey]),
@@ -274,7 +272,7 @@ public class ApplicationDbContextInitialiser(
             Currency = "USD"
         };
 
-        var websiteRedesign = NewInvoice("INV-2026-001", "contoso", 75, 30);
+        var websiteRedesign = NewInvoice("contoso", 75, 30);
         websiteRedesign.ReplaceItems(
         [
             new InvoiceItem { Description = "Discovery workshop", Quantity = 1, UnitPrice = 1200 },
@@ -284,7 +282,7 @@ public class ApplicationDbContextInitialiser(
         websiteRedesign.TaxType = TaxType.Percentage;
         websiteRedesign.AmountPaid = websiteRedesign.Total;
 
-        var mobileApp = NewInvoice("INV-2026-002", "fabrikam", 45, 14);
+        var mobileApp = NewInvoice("fabrikam", 45, 14);
         mobileApp.ReplaceItems(
         [
             new InvoiceItem { Description = "React Native development (hours)", Quantity = 60, UnitPrice = 95 },
@@ -293,7 +291,7 @@ public class ApplicationDbContextInitialiser(
         mobileApp.Discount = 10;
         mobileApp.DiscountType = DiscountType.Percentage;
 
-        var hosting = NewInvoice("INV-2026-003", "adventure", 20, 30);
+        var hosting = NewInvoice("adventure", 20, 30);
         hosting.ReplaceItems(
         [
             new InvoiceItem { Description = "Managed hosting (months)", Quantity = 3, UnitPrice = 149 },
@@ -301,7 +299,7 @@ public class ApplicationDbContextInitialiser(
         ]);
         hosting.AmountPaid = 200;
 
-        var consulting = NewInvoice("INV-2026-004", "tailspin", 3, 30);
+        var consulting = NewInvoice("tailspin", 3, 30);
         consulting.ReplaceItems(
         [
             new InvoiceItem { Description = "Architecture review", Quantity = 1, UnitPrice = 2400 },
@@ -313,11 +311,11 @@ public class ApplicationDbContextInitialiser(
         consulting.TaxType = TaxType.Percentage;
         consulting.Notes = "Thank you for your business!";
 
-        // The newest invoice is left as a draft, so the demo shows both editable drafts and final, issued invoices.
-        foreach (var issued in new[] { websiteRedesign, mobileApp, hosting })
-        {
-            issued.Issue(IssuedOn(issued.IssueDate));
-        }
+        // The newest invoice is left as a draft, so the demo shows both editable drafts and final, issued invoices. The
+        // company's sequence (see the caller) continues after the last of these numbers.
+        websiteRedesign.Issue(IssuedOn(websiteRedesign.IssueDate), "INV-2026-001");
+        mobileApp.Issue(IssuedOn(mobileApp.IssueDate), "INV-2026-002");
+        hosting.Issue(IssuedOn(hosting.IssueDate), "INV-2026-003");
 
         return [websiteRedesign, mobileApp, hosting, consulting];
     }

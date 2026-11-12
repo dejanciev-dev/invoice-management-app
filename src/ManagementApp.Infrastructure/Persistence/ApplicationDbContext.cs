@@ -26,6 +26,8 @@ public class ApplicationDbContext(
 
     public DbSet<Product> Products => Set<Product>();
 
+    public DbSet<InvoiceNumberSequence> InvoiceNumberSequences => Set<InvoiceNumberSequence>();
+
     public DbSet<Tenant> Tenants => Set<Tenant>();
 
     public DbSet<TenantMembership> TenantMemberships => Set<TenantMembership>();
