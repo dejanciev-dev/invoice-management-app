@@ -2,6 +2,7 @@ using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure.Auditing;
 using ManagementApp.Infrastructure.BackgroundJobs;
 using ManagementApp.Infrastructure.Files;
+using ManagementApp.Infrastructure.Files.Storage;
 using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Notifications;
 using ManagementApp.Infrastructure.Persistence;
@@ -64,6 +65,7 @@ public static class DependencyInjection
 
         services.AddSingleton(TimeProvider.System);
         services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
+        services.AddFileStorage(configuration);
 
         services.AddSingleton<TenantJobRunner>();
         services.AddSingleton<OverdueInvoiceReminderJob>();

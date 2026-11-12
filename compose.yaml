@@ -24,8 +24,10 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: Server=db;Database=ManagementApp;User Id=sa;Password=${DB_PASSWORD:-Local_dev_Passw0rd};TrustServerCertificate=True
       Database__SeedDemoData: "true"
+      FileStorage__LocalRootPath: /home/app/files
     volumes:
       - keys:/home/app/.aspnet/DataProtection-Keys
+      - files:/home/app/files
     depends_on:
       db:
         condition: service_healthy
@@ -33,3 +35,4 @@ services:
 volumes:
   sqldata:
   keys:
+  files:
