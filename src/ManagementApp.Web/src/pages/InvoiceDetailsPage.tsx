@@ -1,9 +1,10 @@
-import { ArrowLeft, Ban, Banknote, Pencil, Printer, ReceiptText, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, Banknote, FileDown, Pencil, Printer, ReceiptText, Send, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCan } from '../api/auth'
 import { ApiError } from '../api/client'
 import {
+  invoicePdfUrl,
   useDeleteInvoice,
   useDeletePayment,
   useInvoice,
@@ -15,7 +16,7 @@ import {
 import { tenantLogoUrl, useCurrentTenant } from '../api/tenant'
 import type { CurrentTenant, Invoice, PaymentMethod } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
-import { inputClass } from '../components/styles'
+import { buttonClass, inputClass } from '../components/styles'
 import { Alert, Button, ButtonLink, Card, EmptyRow, Field, Spinner, tableClass, tdClass, theadClass, thClass } from '../components/ui'
 import { formatDate, formatMoney, invoiceTitle, toIsoDate } from '../lib/format'
 import { formatDateTime, paymentMethodLabels } from '../lib/labels'
@@ -103,6 +104,10 @@ function Toolbar({ invoice }: { invoice: Invoice }) {
               <Printer className="size-4" aria-hidden />
               Print
             </Button>
+            <a href={invoicePdfUrl(invoice.id)} download className={buttonClass('secondary')}>
+              <FileDown className="size-4" aria-hidden />
+              PDF
+            </a>
             {isDraft && canDelete && (
               <Button variant="secondary" onClick={() => setMode('delete')}>
                 <Trash2 className="size-4" aria-hidden />

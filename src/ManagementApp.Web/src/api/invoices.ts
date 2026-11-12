@@ -31,6 +31,9 @@ export const invoiceKeys = {
 /** A plain download link, so the active company travels in the query string. */
 export const invoiceExportUrl = () => withTenant('/api/invoices/export')
 
+/** The invoice as a PDF: issued invoices are the stored copy made when issued; drafts and void ones are marked. */
+export const invoicePdfUrl = (id: number) => withTenant(`/api/invoices/${id}/pdf`)
+
 /** One page of invoices; searching, filtering and paging happen on the server. */
 export function useInvoices(filters: InvoiceFilters = {}) {
   return useQuery({

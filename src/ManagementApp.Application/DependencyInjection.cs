@@ -4,6 +4,7 @@ using ManagementApp.Application.Auditing;
 using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Subscriptions;
 using ManagementApp.Application.Customers;
+using ManagementApp.Application.Invoices;
 using ManagementApp.Application.Invoices.Commands;
 using ManagementApp.Application.Invoices.Queries;
 using ManagementApp.Application.Members;
@@ -27,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<GetInvoicesHandler>();
         services.AddScoped<GetInvoiceHandler>();
         services.AddScoped<GetInvoiceStatsHandler>();
+        services.AddScoped<GetInvoicePdfHandler>();
+        services.AddScoped<InvoicePdfService>();
         services.AddScoped<ExportInvoicesHandler>();
         services.AddScoped<CreateInvoiceHandler>();
         services.AddScoped<UpdateInvoiceHandler>();
