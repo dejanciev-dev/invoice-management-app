@@ -226,7 +226,6 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("InvoiceNumber")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -300,7 +299,8 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerId");
 
                     b.HasIndex("TenantId", "InvoiceNumber")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[InvoiceNumber] IS NOT NULL");
 
                     b.HasIndex("TenantId", "IssueDate");
 
@@ -340,6 +340,19 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.ToTable("InvoiceItem");
+                });
+
+            modelBuilder.Entity("ManagementApp.Domain.Entities.InvoiceNumberSequence", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("NextNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("TenantId");
+
+                    b.ToTable("InvoiceNumberSequences");
                 });
 
             modelBuilder.Entity("ManagementApp.Domain.Entities.Product", b =>
@@ -861,6 +874,15 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ManagementApp.Domain.Entities.InvoiceNumberSequence", b =>
+                {
+                    b.HasOne("ManagementApp.Domain.Tenancy.Tenant", null)
+                        .WithOne()
+                        .HasForeignKey("ManagementApp.Domain.Entities.InvoiceNumberSequence", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ManagementApp.Domain.Entities.Product", b =>
                 {
                     b.HasOne("ManagementApp.Domain.Tenancy.Tenant", null)
@@ -924,9 +946,6 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                             b1.Property<string>("Footer")
                                 .HasMaxLength(1000)
                                 .HasColumnType("nvarchar(1000)");
-
-                            b1.Property<int>("NextNumber")
-                                .HasColumnType("int");
 
                             b1.Property<int>("NumberPadding")
                                 .HasColumnType("int");

@@ -19,6 +19,9 @@ public interface IApplicationDbContext
     /// <summary>Also hides deleted products (see <see cref="Product.DeletedAt"/>).</summary>
     DbSet<Product> Products { get; }
 
+    /// <summary>One row per tenant; see <see cref="Invoices.InvoiceNumbering"/>.</summary>
+    DbSet<InvoiceNumberSequence> InvoiceNumberSequences { get; }
+
     DbSet<Tenant> Tenants { get; }
 
     DbSet<TenantMembership> TenantMemberships { get; }
