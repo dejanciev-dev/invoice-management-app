@@ -1,3 +1,4 @@
+using ManagementApp.Api.Infrastructure;
 using ManagementApp.Application.Accounts;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Members;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ManagementApp.Api.Endpoints;
 
@@ -22,16 +24,21 @@ public static class AuthEndpoints
         group.MapIdentityApi<ApplicationUser>()
             .AddEndpointFilter(BlockIdentityRegistration)
             .AddEndpointFilter(BlockAccountChangesWhileImpersonating)
-            .AddEndpointFilter(AuditLogin);
+            .AddEndpointFilter(AuditLogin)
+            .Add(endpoint => endpoint.Metadata.Add(new EnableRateLimitingAttribute(
+                SendsEmail(endpoint) ? RateLimitPolicies.AccountCreation : RateLimitPolicies.SignIn)));
 
         group.MapPost("/signup", Signup)
+            .RequireRateLimiting(RateLimitPolicies.AccountCreation)
             .WithSummary("Create an account and a new company, with the account as its admin");
 
         group.MapPost("/logout", Logout)
             .RequireAuthorization()
             .WithSummary("Sign out and clear the authentication cookie");
 
-        var invitations = app.MapGroup("/api/invitations").WithTags("Invitations");
+        var invitations = app.MapGroup("/api/invitations")
+            .WithTags("Invitations")
+            .RequireRateLimiting(RateLimitPolicies.Invitations);
         invitations.MapGet("/{token}", PreviewInvitation).WithSummary("Show who an invitation is from and for");
         invitations.MapPost("/accept", AcceptInvitation)
             .WithSummary("Accept an invitation, creating an account if needed (or as the signed-in user)");
@@ -119,6 +126,12 @@ public static class AuthEndpoints
 
         return result;
     }
+
+    /// <summary>Identity endpoints that email someone get the stricter limit, so they can't be used to spam an inbox.</summary>
+    private static bool SendsEmail(EndpointBuilder endpoint) =>
+        endpoint is RouteEndpointBuilder { RoutePattern.RawText: { } route }
+        && (route.EndsWith("/forgotPassword", StringComparison.OrdinalIgnoreCase)
+            || route.EndsWith("/resendConfirmationEmail", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsEndpoint(EndpointFilterInvocationContext context, string suffix) =>
         context.HttpContext.GetEndpoint() is RouteEndpoint endpoint

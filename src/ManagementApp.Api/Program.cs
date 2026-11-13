@@ -21,6 +21,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddAppAuthorization();
+builder.Services.AddAppRateLimiting(builder.Configuration);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -53,6 +54,7 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
+app.UseRateLimiter();
 app.UseAuthentication();
 // Establishes the tenant from the user's verified membership before any authorization decision is made.
 app.UseMiddleware<TenantResolutionMiddleware>();

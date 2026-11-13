@@ -59,6 +59,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment(Environment);
         builder.UseSetting("App:PublicBaseUrl", PublicBaseUrl);
         builder.UseSetting("BackgroundJobs:Enabled", "false");
+        // Every test client shares one address, so the limits would trip across tests; RateLimitingTests turn them on.
+        builder.UseSetting("RateLimiting:Enabled", "false");
         builder.UseSetting("FileStorage:Provider", "Local");
         builder.UseSetting("FileStorage:LocalRootPath", FileStorageRoot);
         foreach (var (key, value) in Settings)
