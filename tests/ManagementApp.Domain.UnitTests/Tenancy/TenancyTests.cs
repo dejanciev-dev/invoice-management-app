@@ -62,10 +62,9 @@ public class TenantSubscriptionTests
     [Fact]
     public void PaidPeriods_WithoutAnEndDate_NeverExpire()
     {
-        var subscription = TenantSubscription.Activate(SubscriptionPlans.Enterprise, BillingCycle.Yearly, periodEndsAt: null);
+        var subscription = TenantSubscription.Activate(SubscriptionPlans.Business, BillingCycle.Yearly, periodEndsAt: null);
 
         subscription.AllowsChanges(Now.AddYears(10)).ShouldBeTrue();
-        subscription.MaxUsers.ShouldBeNull();
     }
 
     [Theory]
@@ -85,8 +84,8 @@ public class TenantSubscriptionTests
         subscription.ApplyPlan(SubscriptionPlans.Starter);
 
         subscription.MaxUsers.ShouldBe(SubscriptionPlans.Starter.MaxUsers);
-        subscription.HasFeature(PlanFeature.CsvExport).ShouldBeTrue();
-        subscription.HasFeature(PlanFeature.Reports).ShouldBeFalse();
+        subscription.EntitlementsAt(Now).Has(PlanFeature.CsvExport).ShouldBeTrue();
+        subscription.EntitlementsAt(Now).Has(PlanFeature.Reports).ShouldBeFalse();
     }
 }
 

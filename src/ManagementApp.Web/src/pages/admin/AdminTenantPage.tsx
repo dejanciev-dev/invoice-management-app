@@ -214,7 +214,7 @@ function SubscriptionForm({ tenant }: { tenant: TenantDetails }) {
           <select id="sub-plan" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })} className={inputClass}>
             {(plans.data ?? []).map((p) => (
               <option key={p.code} value={p.code}>
-                {p.name} (${p.monthlyPrice}/mo)
+                {p.name} ({formatMoney(p.monthlyPrice, p.currency)}/mo)
               </option>
             ))}
           </select>

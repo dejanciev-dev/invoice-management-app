@@ -40,7 +40,7 @@ public sealed class UpdateTenantSettingsHandler(
 
         var brandingChanged = settings.Invoice.BrandColor != tenant.InvoiceSettings.BrandColor;
         if (brandingChanged && !string.IsNullOrWhiteSpace(settings.Invoice.BrandColor)
-            && !tenant.Subscription.HasFeature(PlanFeature.CustomBranding))
+            && !tenant.Subscription.EntitlementsAt(timeProvider.GetUtcNow()).Has(PlanFeature.CustomBranding))
         {
             throw new ForbiddenException("Your plan does not include custom branding.");
         }

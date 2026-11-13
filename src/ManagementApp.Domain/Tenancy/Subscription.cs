@@ -27,7 +27,7 @@ public enum PlanFeature
     All = CsvExport | Reports | AuditLog | CustomBranding
 }
 
-/// <summary>A plan in the catalogue. Prices are informational until a payment provider is integrated.</summary>
+/// <summary>A plan in the catalogue. Prices are in <see cref="SubscriptionPlans.Currency"/>, and informational until a payment provider is integrated.</summary>
 public sealed record SubscriptionPlan(
     string Code,
     string Name,
@@ -37,19 +37,39 @@ public sealed record SubscriptionPlan(
     decimal MonthlyPrice,
     decimal YearlyPrice);
 
+/// <summary>
+/// The plan catalogue: the only place plan codes, prices and limits are defined. Changing a plan here only affects
+/// tenants that are put on it afterwards; existing tenants keep the limits copied when their plan was applied.
+/// </summary>
 public static class SubscriptionPlans
 {
+    public const string Currency = "EUR";
     public const int TrialDays = 14;
 
+    public static readonly SubscriptionPlan Free = new("free", "Free", 1, 10, PlanFeature.None, 0, 0);
     public static readonly SubscriptionPlan Trial = new("trial", "Trial", 5, 100, PlanFeature.All, 0, 0);
     public static readonly SubscriptionPlan Starter = new("starter", "Starter", 3, 50, PlanFeature.CsvExport, 9, 90);
-    public static readonly SubscriptionPlan Professional = new("professional", "Professional", 15, 1000, PlanFeature.All, 29, 290);
-    public static readonly SubscriptionPlan Enterprise = new("enterprise", "Enterprise", null, null, PlanFeature.All, 99, 990);
+    public static readonly SubscriptionPlan Professional = new("professional", "Professional", 10, 500, PlanFeature.All, 19, 190);
+    public static readonly SubscriptionPlan Business = new("business", "Business", 25, 2000, PlanFeature.All, 39, 390);
 
-    public static IReadOnlyList<SubscriptionPlan> All { get; } = [Trial, Starter, Professional, Enterprise];
+    public static IReadOnlyList<SubscriptionPlan> All { get; } = [Free, Trial, Starter, Professional, Business];
 
     public static SubscriptionPlan? Find(string code) =>
         All.FirstOrDefault(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase));
+}
+
+/// <summary>What a tenant may do right now: computed in one place from its subscription and the clock.</summary>
+/// <param name="ReadOnlyReason">Why nothing can be changed, when <see cref="CanChangeData"/> is false.</param>
+public sealed record Entitlements(
+    string PlanCode,
+    SubscriptionStatus Status,
+    bool CanChangeData,
+    string? ReadOnlyReason,
+    int? MaxUsers,
+    int? MaxInvoicesPerMonth,
+    PlanFeature Features)
+{
+    public bool Has(PlanFeature feature) => (Features & feature) == feature;
 }
 
 /// <summary>
@@ -58,6 +78,8 @@ public static class SubscriptionPlans
 /// </summary>
 public class TenantSubscription
 {
+    public const string EndedMessage = "Your subscription has ended. Your data is read-only until it is renewed.";
+
     public string PlanCode { get; set; } = SubscriptionPlans.Trial.Code;
 
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Trialing;
@@ -115,9 +137,15 @@ public class TenantSubscription
         _ => Status
     };
 
-    /// <summary>Expired and cancelled tenants keep read access to their data but cannot create or change anything.</summary>
-    public bool AllowsChanges(DateTimeOffset now) =>
-        EffectiveStatus(now) is SubscriptionStatus.Trialing or SubscriptionStatus.Active or SubscriptionStatus.PastDue;
+    /// <summary>What the tenant may do as of <paramref name="now"/>; every check of the plan goes through this.</summary>
+    public Entitlements EntitlementsAt(DateTimeOffset now)
+    {
+        var status = EffectiveStatus(now);
+        var canChange = status is SubscriptionStatus.Trialing or SubscriptionStatus.Active or SubscriptionStatus.PastDue;
+        return new Entitlements(PlanCode, status, canChange, canChange ? null : EndedMessage, MaxUsers, MaxInvoicesPerMonth, Features);
+    }
 
-    public bool HasFeature(PlanFeature feature) => (Features & feature) == feature;
+    /// <summary>Expired and cancelled tenants keep read access to their data but cannot create or change anything.</summary>
+    public bool AllowsChanges(DateTimeOffset now) => EntitlementsAt(now).CanChangeData;
+
 }

@@ -84,6 +84,8 @@ public sealed record PlanDto(
     int? MaxInvoicesPerMonth,
     IReadOnlyList<PlanFeature> Features,
     decimal MonthlyPrice,
-    decimal YearlyPrice);
+    decimal YearlyPrice,
+    string Currency,
+    bool IsDefault);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
