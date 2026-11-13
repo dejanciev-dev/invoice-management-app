@@ -34,7 +34,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private SqliteConnection _connection = new("DataSource=:memory:");
+    private bool _ownsConnection = true;
+
+    /// <summary>Runs this app on another factory's database, like a second instance of the same deployment.</summary>
+    public ApiFactory SharesDatabaseWith
+    {
+        init
+        {
+            _connection.Dispose();
+            _connection = value._connection;
+            _ownsConnection = false;
+        }
+    }
 
     /// <summary>Stored files go to a folder of their own per factory, removed when the factory is disposed.</summary>
     public string FileStorageRoot { get; } = Path.Combine(Path.GetTempPath(), "api-tests-files", Guid.NewGuid().ToString("N"));
@@ -55,7 +67,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        _connection.Open();
+        if (_ownsConnection)
+        {
+            _connection.Open();
+        }
 
         builder.UseEnvironment(Environment);
         builder.UseSetting("App:PublicBaseUrl", PublicBaseUrl);
@@ -185,7 +200,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        _connection.Dispose();
+        if (_ownsConnection)
+        {
+            _connection.Dispose();
+        }
+
         if (Directory.Exists(FileStorageRoot))
         {
             Directory.Delete(FileStorageRoot, recursive: true);

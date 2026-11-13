@@ -8,6 +8,7 @@ using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Emails;
 using ManagementApp.Infrastructure.Persistence;
 using ManagementApp.Infrastructure.Tenancy;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,11 @@ public static class DependencyInjection
                 sqlServer => sqlServer.EnableRetryOnFailure()));
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+
+        // Keys live in the database, so sessions survive redeploys and every instance can read every cookie.
+        services.AddDataProtection()
+            .SetApplicationName("ManagementApp")
+            .PersistKeysToDbContext<ApplicationDbContext>();
         services.AddScoped<ApplicationDbContextInitialiser>();
 
         services.AddScoped<TenantContext>();
