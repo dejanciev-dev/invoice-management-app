@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<GetFinancialSummaryHandler>();
 
         services.AddScoped<EmailOutbox>();
+        services.AddScoped<SystemEmailOutbox>();
         services.AddScoped<GetEmailsHandler>();
         services.AddScoped<RetryEmailHandler>();
 

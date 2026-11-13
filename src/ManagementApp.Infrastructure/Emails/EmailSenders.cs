@@ -4,6 +4,7 @@ using ManagementApp.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using System.Text.RegularExpressions;
 
 namespace ManagementApp.Infrastructure.Emails;
 
@@ -59,8 +60,11 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options) : IEmailSend
     };
 }
 
-/// <summary>For development: writes each email to the log instead of sending it.</summary>
-public sealed class LogEmailSender(ILogger<LogEmailSender> logger) : IEmailSender
+/// <summary>
+/// For development: writes each email to the log instead of sending it. Secrets in links (<c>token=</c>, <c>code=</c>)
+/// are redacted unless <see cref="EmailOptions.LogSecretLinks"/> is on.
+/// </summary>
+public sealed partial class LogEmailSender(ILogger<LogEmailSender> logger, IOptions<EmailOptions> options) : IEmailSender
 {
     public Task<string?> SendAsync(OutgoingEmail email, CancellationToken cancellationToken)
     {
@@ -70,8 +74,13 @@ public sealed class LogEmailSender(ILogger<LogEmailSender> logger) : IEmailSende
             email.ReplyTo ?? "none",
             email.To,
             email.Subject,
-            email.Body,
+            options.Value.LogSecretLinks ? email.Body : Redact(email.Body),
             string.Join(", ", email.Attachments.Select(a => $"{a.FileName} ({a.Content.Length} bytes)")));
         return Task.FromResult<string?>(null);
     }
+
+    public static string Redact(string text) => SecretParameter().Replace(text, "$1=[redacted]");
+
+    [GeneratedRegex(@"\b(token|code)=[^&\s]+", RegexOptions.IgnoreCase)]
+    private static partial Regex SecretParameter();
 }

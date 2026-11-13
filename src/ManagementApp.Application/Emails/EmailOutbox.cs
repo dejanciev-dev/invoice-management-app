@@ -51,6 +51,26 @@ public sealed class EmailOutbox(IApplicationDbContext context, TimeProvider time
     }
 }
 
+/// <summary>What a system email is for; also how it is found again, e.g. to limit how often one is sent.</summary>
+public static class SystemEmailPurposes
+{
+    public const string PasswordReset = "password-reset";
+}
+
+/// <summary>
+/// Puts account emails (password resets) in the platform's outbox. They come from the product, not a company, and are
+/// never visible to a company. Like <see cref="EmailOutbox"/>, it only adds the email: the caller saves.
+/// </summary>
+public sealed class SystemEmailOutbox(IApplicationDbContext context, TimeProvider timeProvider)
+{
+    public SystemEmailMessage Queue(string? userId, string purpose, string to, string subject, string body)
+    {
+        var message = SystemEmailMessage.Create(userId, purpose, to, subject, body, timeProvider.GetUtcNow());
+        context.SystemEmailMessages.Add(message);
+        return message;
+    }
+}
+
 /// <summary>Sends tenant notifications (invitations, reminders) as real emails through the outbox.</summary>
 public sealed class OutboxNotificationSender(EmailOutbox outbox, IApplicationDbContext context) : INotificationSender
 {

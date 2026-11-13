@@ -51,7 +51,9 @@ internal sealed class EmailOutboxHealthCheck(ApplicationDbContext context, TimeP
     {
         var dueBefore = timeProvider.GetUtcNow() - MaxDelay;
         var stuck = await context.EmailMessages.IgnoreQueryFilters()
-            .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken);
+                .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken)
+            + await context.SystemEmailMessages
+                .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken);
 
         return stuck == 0
             ? HealthCheckResult.Healthy()

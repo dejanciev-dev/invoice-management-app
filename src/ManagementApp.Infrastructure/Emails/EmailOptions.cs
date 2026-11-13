@@ -11,6 +11,15 @@ public sealed class EmailOptions
     /// <summary>The address every email is sent from; the company's name is shown as the sender's name.</summary>
     public string FromAddress { get; set; } = "no-reply@localhost";
 
+    /// <summary>The sender name on account emails (password resets), which come from the product, not a company.</summary>
+    public string SystemFromName { get; set; } = "Invoice Manager";
+
+    /// <summary>
+    /// Whether the Log provider writes links with secrets (password reset, invitation) in full. Only for local
+    /// development; everywhere else they are redacted, because logs are read by more people than the recipient.
+    /// </summary>
+    public bool LogSecretLinks { get; set; }
+
     /// <summary>How often the outbox worker looks for emails to send.</summary>
     public int PollSeconds { get; set; } = 10;
 

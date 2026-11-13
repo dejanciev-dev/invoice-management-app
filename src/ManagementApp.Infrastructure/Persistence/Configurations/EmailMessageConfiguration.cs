@@ -47,3 +47,21 @@ public class EmailAttachmentConfiguration : IEntityTypeConfiguration<EmailAttach
         builder.Property(a => a.StoragePath).HasMaxLength(400).IsRequired();
     }
 }
+
+public class SystemEmailMessageConfiguration : IEntityTypeConfiguration<SystemEmailMessage>
+{
+    public void Configure(EntityTypeBuilder<SystemEmailMessage> builder)
+    {
+        builder.Property(e => e.To).HasMaxLength(OutboxMessage.AddressMaxLength).IsRequired();
+        builder.Property(e => e.Subject).HasMaxLength(OutboxMessage.SubjectMaxLength).IsRequired();
+        builder.Property(e => e.Body).IsRequired();
+        builder.Property(e => e.UserId).HasMaxLength(450);
+        builder.Property(e => e.Purpose).HasMaxLength(SystemEmailMessage.PurposeMaxLength).IsRequired();
+        builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(e => e.ProviderMessageId).HasMaxLength(200);
+        builder.Property(e => e.LastError).HasMaxLength(OutboxMessage.ErrorMaxLength);
+
+        builder.HasIndex(e => new { e.Status, e.NextAttemptAt }); // the worker's "what is due" query
+        builder.HasIndex(e => new { e.UserId, e.Purpose, e.CreatedAt });
+    }
+}
