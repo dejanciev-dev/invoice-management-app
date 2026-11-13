@@ -40,24 +40,33 @@ internal sealed class FileStorageHealthCheck(IFileStorage storage) : IHealthChec
 }
 
 /// <summary>
-/// Degraded when emails have been waiting to be sent for longer than the worker would ever leave them: the worker has
-/// stopped or can't keep up. It doesn't make the app unready; requests can still be served.
+/// Unhealthy when the database can't be queried. Degraded when emails have been waiting to be sent for longer than the
+/// worker would ever leave them (it has stopped or can't keep up), which doesn't make the app unready. One check, so
+/// the probe never runs two database queries at the same time on one connection.
 /// </summary>
-internal sealed class EmailOutboxHealthCheck(ApplicationDbContext context, TimeProvider timeProvider) : IHealthCheck
+internal sealed class DatabaseHealthCheck(ApplicationDbContext context, TimeProvider timeProvider) : IHealthCheck
 {
-    public static readonly TimeSpan MaxDelay = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan MaxEmailDelay = TimeSpan.FromMinutes(15);
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext healthContext, CancellationToken cancellationToken = default)
     {
-        var dueBefore = timeProvider.GetUtcNow() - MaxDelay;
-        var stuck = await context.EmailMessages.IgnoreQueryFilters()
-                .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken)
-            + await context.SystemEmailMessages
-                .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken);
+        int stuck;
+        try
+        {
+            var dueBefore = timeProvider.GetUtcNow() - MaxEmailDelay;
+            stuck = await context.EmailMessages.IgnoreQueryFilters()
+                    .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken)
+                + await context.SystemEmailMessages
+                    .CountAsync(e => e.Status == EmailStatus.Pending && e.NextAttemptAt <= dueBefore, cancellationToken);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return HealthCheckResult.Unhealthy("The database can't be queried.", e);
+        }
 
         return stuck == 0
             ? HealthCheckResult.Healthy()
-            : HealthCheckResult.Degraded($"{stuck} emails have been due for over {MaxDelay.TotalMinutes:0} minutes.",
+            : HealthCheckResult.Degraded($"{stuck} emails have been due for over {MaxEmailDelay.TotalMinutes:0} minutes.",
                 data: new Dictionary<string, object> { ["stuckEmails"] = stuck });
     }
 }
