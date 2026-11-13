@@ -4,6 +4,7 @@ using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Members;
 using ManagementApp.Domain.Auditing;
 using ManagementApp.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Identity;
@@ -45,6 +46,16 @@ public static class AuthEndpoints
             .RequireAuthorization()
             .WithSummary("Sign out and clear the authentication cookie");
 
+        var account = app.MapGroup("/api/account")
+            .WithTags("Account")
+            .RequireAuthorization()
+            .AddEndpointFilter(BlockAccountChangesWhileImpersonating);
+        account.MapPut("/profile", UpdateProfile).WithSummary("Change your display name");
+        account.MapPost("/password", ChangePassword)
+            .WithSummary("Change your password; your other sessions end, this one carries on");
+        account.MapPost("/sign-out-everywhere", SignOutEverywhere)
+            .WithSummary("End every session and token of your account, on every device, including this one");
+
         var invitations = app.MapGroup("/api/invitations")
             .WithTags("Invitations")
             .RequireRateLimiting(RateLimitPolicies.Invitations);
@@ -72,6 +83,42 @@ public static class AuthEndpoints
         ResetPasswordCommand command, ResetPasswordHandler handler, CancellationToken cancellationToken)
     {
         await handler.HandleAsync(command, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> UpdateProfile(
+        UpdateProfileCommand command, AccountHandler handler, CancellationToken cancellationToken)
+    {
+        await handler.UpdateProfileAsync(command, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> ChangePassword(
+        ChangePasswordCommand command,
+        AccountHandler handler,
+        HttpContext httpContext,
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        await handler.ChangePasswordAsync(command, cancellationToken);
+
+        // The new security stamp ends every session, this one too; a browser session gets a fresh cookie so the user
+        // stays signed in here. A bearer-token client signs in again.
+        var cookie = await httpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (cookie.Succeeded && await userManager.GetUserAsync(httpContext.User) is { } user)
+        {
+            await signInManager.RefreshSignInAsync(user);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> SignOutEverywhere(
+        AccountHandler handler, SignInManager<ApplicationUser> signInManager, CancellationToken cancellationToken)
+    {
+        await handler.SignOutEverywhereAsync(cancellationToken);
+        await signInManager.SignOutAsync();
         return TypedResults.NoContent();
     }
 

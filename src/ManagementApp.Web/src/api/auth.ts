@@ -83,6 +83,38 @@ export function useResetPassword() {
   })
 }
 
+export function useUpdateProfile() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: { displayName: string | null }) =>
+      apiRequest<void>('/account/profile', { method: 'PUT', ...json(request) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: currentUserKey }),
+  })
+}
+
+/** Changes the password; this browser stays signed in, every other session ends. */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (request: { currentPassword: string; newPassword: string }) =>
+      apiRequest<void>('/account/password', { method: 'POST', ...json(request) }),
+  })
+}
+
+/** Ends every session of the account, this one included. */
+export function useSignOutEverywhere() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => apiRequest<void>('/account/sign-out-everywhere', { method: 'POST' }),
+    onSuccess: () => {
+      setActiveTenantId(null)
+      queryClient.clear()
+      queryClient.setQueryData(currentUserKey, null)
+    },
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
 

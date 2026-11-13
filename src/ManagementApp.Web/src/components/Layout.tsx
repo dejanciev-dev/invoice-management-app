@@ -1,4 +1,4 @@
-import { Building2, FileText, LogOut, Shield } from 'lucide-react'
+import { Building2, FileText, LogOut, Shield, UserRound } from 'lucide-react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { useCan, useCurrentUser, useLogout, useSwitchTenant } from '../api/auth'
 import { tenantLogoUrl } from '../api/tenant'
@@ -129,7 +129,15 @@ export function UserMenu() {
           Admin
         </Link>
       )}
-      <span className="hidden text-sm text-muted md:inline">{user?.email}</span>
+      {user?.impersonation ? (
+        <span className="hidden text-sm text-muted md:inline">{user.email}</span>
+      ) : (
+        <Link to="/account" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-muted hover:text-ink" title="My account">
+          <UserRound className="size-4" aria-hidden />
+          <span className="hidden md:inline">{user?.email}</span>
+          <span className="sr-only md:hidden">My account</span>
+        </Link>
+      )}
       {!user?.impersonation && (
         <Button variant="ghost" onClick={() => logout.mutate()} loading={logout.isPending}>
           <LogOut className="size-4" aria-hidden />
