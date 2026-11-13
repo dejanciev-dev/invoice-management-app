@@ -5,6 +5,7 @@ using ManagementApp.Application;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure;
 using ManagementApp.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
 
@@ -72,7 +73,11 @@ app.MapCustomerEndpoints();
 app.MapProductEndpoints();
 app.MapEmailEndpoints();
 app.MapAdminEndpoints();
-app.MapHealthChecks("/health");
+// Liveness: the process answers (restart it if not). Readiness: it can serve requests (route traffic to it).
+// /health stays as an alias of readiness for existing monitors.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(HealthCheckTags.Ready) });
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = check => check.Tags.Contains(HealthCheckTags.Ready) });
 
 // Unknown API routes return 404; every other route is handled by the client-side router.
 app.Map("/api/{**path}", () => TypedResults.NotFound()).ExcludeFromDescription();

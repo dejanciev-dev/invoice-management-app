@@ -1,3 +1,4 @@
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Application.Invoices;
 using ManagementApp.Domain.Auditing;
@@ -88,6 +89,7 @@ public sealed class BackgroundJobScheduler(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     TimeProvider timeProvider,
+    AppMetrics metrics,
     ILogger<BackgroundJobScheduler> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -101,19 +103,28 @@ public sealed class BackgroundJobScheduler(
         using var timer = new PeriodicTimer(interval, timeProvider);
         do
         {
-            try
-            {
-                using var scope = scopeFactory.CreateScope();
-                var expired = await scope.ServiceProvider.GetRequiredService<SubscriptionExpiryJob>().RunAsync(stoppingToken);
-                var reminded = await scope.ServiceProvider.GetRequiredService<OverdueInvoiceReminderJob>().RunAsync(stoppingToken);
-                logger.LogInformation("Background jobs ran: {Expired} subscriptions expired, {Tenants} tenants checked for overdue invoices",
-                    expired, reminded);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Background jobs failed");
-            }
+            await RunJobAsync<SubscriptionExpiryJob>((job, ct) => job.RunAsync(ct), stoppingToken);
+            await RunJobAsync<OverdueInvoiceReminderJob>((job, ct) => job.RunAsync(ct), stoppingToken);
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
+    }
+
+    /// <summary>Runs one job; a failure is logged and counted, and doesn't stop the other jobs.</summary>
+    private async Task RunJobAsync<TJob>(
+        Func<TJob, CancellationToken, Task<int>> run, CancellationToken cancellationToken) where TJob : notnull
+    {
+        var name = typeof(TJob).Name;
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var count = await run(scope.ServiceProvider.GetRequiredService<TJob>(), cancellationToken);
+            metrics.JobRan(name, succeeded: true);
+            logger.LogInformation("Job {Job} ran: {Count} items processed", name, count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            metrics.JobRan(name, succeeded: false);
+            logger.LogError(ex, "Job {Job} failed", name);
+        }
     }
 }

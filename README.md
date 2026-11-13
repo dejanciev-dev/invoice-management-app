@@ -141,6 +141,7 @@ The interactive API reference is at <http://localhost:5080/scalar> in Developmen
 **Reverse proxy.** The app reads the client's address and scheme from `X-Forwarded-For` and `X-Forwarded-Proto`, but only from trusted proxies: a proxy on the same machine by default, or those in `ForwardedHeaders__KnownProxies__0` (an IP) and `ForwardedHeaders__KnownNetworks__0` (CIDR, e.g. `10.0.0.0/16`). On hosts with changing proxy addresses where the app is only reachable through the proxy (Azure Container Apps, App Service), set `ForwardedHeaders__TrustAllProxies=true`. The session cookie is `HttpOnly` and `SameSite=Lax`, and `Secure` whenever `App__PublicBaseUrl` is https, so then the app must be reached over https (directly or via the proxy).
 **Sessions across instances.** The keys that protect session cookies are stored in the database (`DataProtectionKeys` table), so sign-ins survive redeploys and work on every instance. No volume is needed for them.
 **Security headers.** Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Opener-Policy`. Outside Development there's also a strict Content Security Policy (`'self'` only, no inline scripts or styles; see `SecurityHeaders.cs`). Loading anything from another origin, such as fonts, analytics or a payment widget, means adding it to that policy.
+**Health and metrics.** Point the platform's liveness probe at `/health/live` and its readiness probe at `/health/ready` (503 when the database or file storage is unavailable). The `ManagementApp` meter counts sign-ups, issued invoices, email send attempts and scheduled job runs, by outcome; watch it with `dotnet-counters monitor -n ManagementApp.Api --counters ManagementApp` or export it with OpenTelemetry.
 
 ## Running the tests
 
@@ -192,7 +193,8 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `GET` `PUT` | `/api/admin/users/...` | All accounts; enable or disable one |
 | `GET` | `/api/admin/audit-logs` | Platform-wide activity |
 | `POST` | `/api/admin/impersonation`, `/api/impersonation/stop` | Start and stop impersonating a tenant user |
-| `GET` | `/health` | Health check (includes the database) |
+| `GET` | `/health/live` | Liveness: the process is up (no dependencies checked) |
+| `GET` | `/health/ready`, `/health` | Readiness: database and file storage reachable; `Degraded` when emails are stuck in the outbox |
 
 ## Project structure
 

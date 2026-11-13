@@ -26,7 +26,8 @@ public sealed class IssueInvoiceHandler(
     TimeProvider timeProvider,
     InvoicePdfService pdfs,
     ILogger<IssueInvoiceHandler> logger,
-    TenantClock tenantClock)
+    TenantClock tenantClock,
+    AppMetrics metrics)
 {
     public async Task<InvoiceDto> HandleAsync(int id, CancellationToken cancellationToken)
     {
@@ -56,6 +57,7 @@ public sealed class IssueInvoiceHandler(
 
             await context.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
+        metrics.InvoiceIssued();
 
         // The PDF is made now, so it shows the company's details and branding as they were when the invoice was issued.
         // The invoice is issued either way; if this fails, the PDF is made on its first download instead.

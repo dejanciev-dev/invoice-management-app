@@ -25,6 +25,7 @@ public static class DependencyInjection
 
         services.AddScoped<SubscriptionGuard>();
         services.AddScoped<TenantClock>();
+        services.AddSingleton<AppMetrics>();
 
         services.AddScoped<GetInvoicesHandler>();
         services.AddScoped<GetInvoiceHandler>();

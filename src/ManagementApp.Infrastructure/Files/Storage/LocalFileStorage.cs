@@ -7,11 +7,20 @@ namespace ManagementApp.Infrastructure.Files.Storage;
 /// Keeps files on the local disk under <see cref="FileStorageOptions.LocalRootPath"/>, for development, a single
 /// server or a container with a mounted volume. Each file's content type is kept next to it in a <c>.type</c> file.
 /// </summary>
-public sealed class LocalFileStorage(IOptions<FileStorageOptions> options) : IFileStorage
+public sealed class LocalFileStorage(IOptions<FileStorageOptions> options) : IFileStorage, IFileStorageProbe
 {
     private const string ContentTypeSuffix = ".type";
 
     private readonly string _root = Path.GetFullPath(options.Value.LocalRootPath);
+
+    /// <summary>Writes and deletes a small file outside every tenant's folder, which catches a read-only volume.</summary>
+    public async Task ProbeAsync(CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(_root);
+        var probe = Path.Combine(_root, $".probe-{Guid.NewGuid():N}");
+        await File.WriteAllBytesAsync(probe, [1], cancellationToken);
+        File.Delete(probe);
+    }
 
     public async Task SaveAsync(Guid tenantId, string path, Stream content, string contentType, CancellationToken cancellationToken)
     {
