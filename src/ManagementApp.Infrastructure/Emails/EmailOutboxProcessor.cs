@@ -1,3 +1,4 @@
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Messaging;
 using ManagementApp.Infrastructure.Persistence;
@@ -17,7 +18,7 @@ namespace ManagementApp.Infrastructure.Emails;
 /// may be sent again when the lease expires.
 /// </summary>
 public sealed class EmailOutboxProcessor(
-    IServiceScopeFactory scopeFactory, TimeProvider timeProvider, ILogger<EmailOutboxProcessor> logger)
+    IServiceScopeFactory scopeFactory, TimeProvider timeProvider, AppMetrics metrics, ILogger<EmailOutboxProcessor> logger)
 {
     public const int BatchSize = 20;
     public static readonly TimeSpan Lease = TimeSpan.FromMinutes(2);
@@ -92,6 +93,7 @@ public sealed class EmailOutboxProcessor(
 
         // Saved even if the request is being cancelled, so the outcome of a send that happened is not lost.
         await context.SaveChangesAsync(CancellationToken.None);
+        metrics.EmailAttempted(email.Status == EmailStatus.Sent);
         return email.Status == EmailStatus.Sent;
     }
 

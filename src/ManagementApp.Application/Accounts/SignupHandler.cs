@@ -1,4 +1,5 @@
 using FluentValidation;
+using ManagementApp.Application.Common;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Domain.Auditing;
 using ManagementApp.Domain.Tenancy;
@@ -23,6 +24,7 @@ public sealed class SignupHandler(
     IApplicationDbContext context,
     IIdentityService identity,
     IAuditLogger auditLogger,
+    AppMetrics metrics,
     IValidator<SignupCommand> validator,
     TimeProvider timeProvider)
 {
@@ -55,6 +57,7 @@ public sealed class SignupHandler(
             await context.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
+        metrics.SignedUp();
         return tenant.Id;
     }
 }

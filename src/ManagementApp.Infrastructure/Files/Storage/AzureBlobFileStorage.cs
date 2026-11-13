@@ -9,9 +9,12 @@ namespace ManagementApp.Infrastructure.Files.Storage;
 /// Keeps files in one Azure Blob Storage container, named by their tenant-prefixed key. The container is created on
 /// first use and is never public: files are only served through the API, which checks the tenant.
 /// </summary>
-public sealed class AzureBlobFileStorage(BlobContainerClient container) : IFileStorage
+public sealed class AzureBlobFileStorage(BlobContainerClient container) : IFileStorage, IFileStorageProbe
 {
     private int _containerReady;
+
+    /// <summary>Reaches the storage account; fails on network or credential problems. The container may not exist yet.</summary>
+    public Task ProbeAsync(CancellationToken cancellationToken) => container.ExistsAsync(cancellationToken);
 
     public async Task SaveAsync(Guid tenantId, string path, Stream content, string contentType, CancellationToken cancellationToken)
     {
