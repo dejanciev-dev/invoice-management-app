@@ -388,12 +388,12 @@ No **critical** tenant-isolation defect was found.
 - **Behaviour:** trigger on `main`. Optionally add `dotnet list package --vulnerable` and `npm audit --omit=dev --audit-level=high` as non-blocking steps (OPS-08 makes them blocking later).
 - **Acceptance:** a push to `main` starts CI. The README badge reflects `main`.
 
-#### OPS-02 · Reverse proxy and cookie hardening · P0 · S
+#### OPS-02 · Reverse proxy and cookie hardening · P0 · S · **Done**
 - **Behaviour:** `UseForwardedHeaders` (proto + for) with known proxies/networks from config. Auth cookie `SecurePolicy=Always` outside Development, `SameSite=Lax`, `HttpOnly`. HSTS confirmed.
 - **Acceptance:** behind a proxy, `Request.IsHttps` is true, cookies are `Secure`, and audit `IpAddress` shows the client IP.
 - **Tests:** an integration test that sends `X-Forwarded-Proto/For` and asserts the scheme, IP and cookie flags.
 
-#### OPS-03 · Shared Data Protection key store · P0 · S (migration)
+#### OPS-03 · Shared Data Protection key store · P0 · S (migration) · **Done**
 - **Behaviour:** `AddDataProtection().SetApplicationName("ManagementApp").PersistKeysToDbContext<ApplicationDbContext>()` (the context implements `IDataProtectionKeyContext`). Optionally protect keys with a certificate or Key Vault (decision with D9).
 - **Acceptance:** sessions survive a container redeploy and work across two instances.
 - **Tests:** an infrastructure test that keys are written to the DB.
@@ -422,7 +422,7 @@ No **critical** tenant-isolation defect was found.
 #### AUTH-04 · MFA (TOTP) for platform admins · P1 · M
 - Required for any `IsPlatformAdmin` account before `/api/admin/*` is usable. Optional for tenant users (P2). Recovery codes.
 
-#### SEC-03 · Security headers · P1 · S
+#### SEC-03 · Security headers · P1 · S · **Done**
 - CSP (self, plus whatever Vite needs; no inline scripts in prod), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `frame-ancestors 'none'`, `Permissions-Policy`. Test asserts the headers on `/` and `/api/*`.
 
 #### SEC-04 · Tenant isolation endpoint matrix test · P1 · M
@@ -491,7 +491,7 @@ No **critical** tenant-isolation defect was found.
 #### OBS-02 · Error tracking and alerting · P1 · S–M · *decision D9*
 - Application Insights or OpenTelemetry → chosen backend. Alerts: 5xx rate, failed jobs, outbox `Failed` count > 0 or oldest `Pending` > 15 min, health check failing, DB DTU/CPU.
 
-#### OBS-03 · Health checks and operational metrics · P1 · S
+#### OBS-03 · Health checks and operational metrics · P1 · S · **Done**
 - `/health/live` (process) and `/health/ready` (DB + storage + outbox backlog threshold). Metrics: emails sent/failed, job runs/failures, sign-ups, invoices issued.
 
 #### OPS-04 · Controlled migrations · P1 · S
@@ -503,7 +503,7 @@ No **critical** tenant-isolation defect was found.
 #### OPS-06 · Staging environment and CD · P1 · M
 - GitHub Actions: build image → push to registry → deploy to staging on `main` → manual approval → production. Environment-specific secrets in GitHub Environments / Key Vault. Smoke test after deploy.
 
-#### OPS-07 · Scheduled jobs safe across instances · P1 · S
+#### OPS-07 · Scheduled jobs safe across instances · P1 · S · **Done**
 - Wrap each scheduled job run in a SQL Server application lock (`sp_getapplock`) or a lease row, as the outbox already does. Until then, document "single instance only".
 
 #### Phase 1 P2 items (do when convenient)
@@ -573,7 +573,7 @@ Each slice is a vertical, independently releasable change: domain → applicatio
 | # | Slice | Backlog items | Effort | Exit criteria |
 |---|---|---|---|---|
 | **1** ✅ | **Safe public entry points** (done) | SEC-01, EML-01, SEC-02, OPS-01 | ~3–4 d | Demo off in Production; absolute invitation links; 429s on abuse; CI on `main`; all tests green |
-| 2 | Production hosting baseline | OPS-02, OPS-03, SEC-03, OBS-03, OPS-07 | ~3–4 d | Works behind a proxy with Secure cookies; sessions survive redeploy and scale-out; headers present; live/ready health; jobs locked |
+| 2 ✅ | Production hosting baseline (done) | OPS-02, OPS-03, SEC-03, OBS-03, OPS-07 | ~3–4 d | Works behind a proxy with Secure cookies; sessions survive redeploy and scale-out; headers present; live/ready health; jobs locked |
 | 3 | Account recovery | EML-02, AUTH-01, AUTH-02 | ~4–5 d | Forgot/reset works end to end via email; users can change their own password |
 | 4 | Entitlements and plan visibility | SUB-01…SUB-06, BILL-01 | ~1.5–2 wk | Server enforces the decided plans; read-only is consistent; tenants see usage and banners; history recorded; manual billing documented |
 | 5 | Onboarding and trust | ONB-01, ONB-02, LEG-01, AUTH-03, L10N-00 | ~1–1.5 wk | New user goes from sign-up to first issued invoice alone; terms accepted and recorded; email verified before third-party email |
