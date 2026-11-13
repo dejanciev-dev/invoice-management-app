@@ -64,6 +64,7 @@ app.UseAuthentication();
 // Establishes the tenant from the user's verified membership before any authorization decision is made.
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<ReadOnlySubscriptionMiddleware>();
 
 app.MapPublicConfigEndpoints();
 app.MapAuthEndpoints();
