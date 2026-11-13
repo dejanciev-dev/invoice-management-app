@@ -24,6 +24,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 {
     public const string Password = "Passw0rd!";
 
+    public const string PublicBaseUrl = "https://app.example.test";
+
     public static readonly DateOnly Today = new(2026, 3, 15);
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -55,6 +57,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         _connection.Open();
 
         builder.UseEnvironment(Environment);
+        builder.UseSetting("App:PublicBaseUrl", PublicBaseUrl);
         builder.UseSetting("BackgroundJobs:Enabled", "false");
         builder.UseSetting("FileStorage:Provider", "Local");
         builder.UseSetting("FileStorage:LocalRootPath", FileStorageRoot);
