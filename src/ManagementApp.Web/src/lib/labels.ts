@@ -1,4 +1,4 @@
-import type { PaymentMethod, Permission, SubscriptionStatus, TenantRole, TenantStatus } from '../api/types'
+import type { PaymentMethod, Permission, PlanFeature, SubscriptionStatus, TenantRole, TenantStatus } from '../api/types'
 
 export const roles: TenantRole[] = ['TenantAdmin', 'Manager', 'Accountant', 'Employee']
 
@@ -34,6 +34,13 @@ export const tenantStatusStyles: Record<TenantStatus, string> = {
   Active: 'bg-emerald-500/10 text-emerald-800 ring-emerald-500/25 dark:text-emerald-300',
   Inactive: 'bg-slate-500/10 text-slate-700 ring-slate-500/20 dark:text-slate-300',
   Suspended: 'bg-red-500/10 text-red-700 ring-red-500/25 dark:text-red-300',
+}
+
+export const planFeatureLabels: Record<PlanFeature, string> = {
+  CsvExport: 'CSV export',
+  Reports: 'Reports',
+  AuditLog: 'Activity log',
+  CustomBranding: 'Brand colour on invoices',
 }
 
 export const subscriptionStatusLabels: Record<SubscriptionStatus, string> = {
