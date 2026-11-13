@@ -5,6 +5,7 @@ using ManagementApp.Domain.Common;
 using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Messaging;
 using ManagementApp.Domain.Tenancy;
+using ManagementApp.Infrastructure.BackgroundJobs;
 using ManagementApp.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -47,6 +48,8 @@ public class ApplicationDbContext(
     public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+
+    public DbSet<JobLease> JobLeases => Set<JobLease>();
 
     /// <summary>The keys that protect session cookies and tokens, shared by every instance of the app.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
