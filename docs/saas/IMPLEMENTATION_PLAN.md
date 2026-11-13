@@ -431,27 +431,27 @@ No **critical** tenant-isolation defect was found.
 #### SEC-05 · `IgnoreQueryFilters` allow-list test · P1 · S
 - An architecture test (reflection or Roslyn source scan) that fails if `IgnoreQueryFilters()` appears outside `Platform/*`, `InvoiceNumbering`, `InvoicePdfService`, invitations, session/membership resolution, jobs, the outbox processor and `DeleteTenantHandler`.
 
-#### SUB-01 · Central entitlements and plan catalogue · P1 · M · *decision D3*
+#### SUB-01 · Central entitlements and plan catalogue · P1 · M · *decision D3* · **Done**
 - **Problem:** plan names and prices differ from the brief. There's no Free plan. Limits and features are checked in several handlers.
 - **Behaviour:** keep `SubscriptionPlans` as the single catalogue (code is fine at this scale; move it to the DB only if prices change often). Align it to the decided plans, including currency and Free/Business if chosen. Introduce an `Entitlements` read model (`CanChangeData`, `InvoiceQuota{limit,used,resetsAt}`, `SeatQuota`, `Features`) computed in one place and used by both `SubscriptionGuard` and the UI. Existing tenants keep their snapshotted limits; a data migration maps old plan codes.
 - **Acceptance:** no plan code or limit literals outside the catalogue (verified by grep in a test). Existing tenants unaffected.
 
-#### SUB-02 · Close read-only gaps · P1 · S
+#### SUB-02 · Close read-only gaps · P1 · S · **Done**
 - Apply `EnsureCanChangeDataAsync` to settings update, logo upload/delete, email retry, member update/deactivate/remove/reset-password. Decide whether logo upload falls under `CustomBranding` (D3). Keep **reading and exporting** always allowed.
 - **Tests:** a theory test over every mutating tenant endpoint with an expired tenant → 403 "read-only".
 
-#### SUB-03 · Invoice quota semantics · P1 · S · *decision D4*
+#### SUB-03 · Invoice quota semantics · P1 · S · *decision D4* · **Done**
 - Recommended: count invoices **issued** in the tenant's local calendar month. Drafts are free, and deleting drafts doesn't game it. Enforce at **issue** instead of create. Use a serializable count inside the issue transaction, which already holds the sequence lock, so it's race-free.
 - **Tests:** a limit of N lets N issues through and refuses N+1. Drafts never count. The month boundary follows the tenant time zone.
 
-#### SUB-04 · Subscription event history · P1 · S (migration)
+#### SUB-04 · Subscription event history · P1 · S (migration) · **Done**
 - Append-only `SubscriptionEvents` (tenant, at, actor, source = `manual|system|provider`, from/to plan and status, period dates, note, provider event ID). Written by `UpdateSubscriptionHandler`, `SubscriptionExpiryJob` and, later, billing webhooks. Shown in the admin tenant page.
 
-#### SUB-05 · Subscription lifecycle policy (grace, cancel, downgrade) · P1 · M · *decision D3*
+#### SUB-05 · Subscription lifecycle policy (grace, cancel, downgrade) · P1 · M · *decision D3* · **Done**
 - `PastDue` stays writable until `GraceEndsAt` (configurable, e.g. 14 days), then read-only. `Cancelled` keeps access until `CurrentPeriodEndsAt`, then Expired (read-only, or the Free plan if D3 says so). Downgrade over the limits: existing data and users are kept and only **new** additions are blocked. Non-payment **never** sets `TenantStatus.Suspended`; document suspension as abuse-only. Fix the enum comment.
 - **Tests:** domain tests for every transition in `EffectiveStatus` / `AllowsChanges`. API test for read-only after the grace period.
 
-#### SUB-06 · Plan and usage page for tenants · P1 · M
+#### SUB-06 · Plan and usage page for tenants · P1 · M · **Done**
 - `GET /api/tenant/subscription` returns entitlements and usage (SUB-01). A "Plan & billing" page shows plan, status, trial or period end, invoices used / limit, seats used / limit and included features, with clear upgrade guidance ("Contact us to upgrade" until Phase 2). Banners for trial ending in ≤3 days, past due and read-only.
 - **Tests:** API test for usage numbers. Component tests for each banner state.
 
@@ -482,7 +482,7 @@ No **critical** tenant-isolation defect was found.
 #### LEG-01 · Terms, privacy, support contact · P1 · S · *content: product owner*
 - Static pages or links from public-config. Sign-up requires accepting the terms: store `TermsAcceptedAt` and `TermsVersion` on the user. Support email in the footer and error pages.
 
-#### BILL-01 · Manual billing process (launch fallback) · P1 · S
+#### BILL-01 · Manual billing process (launch fallback) · P1 · S · **Done**
 - `docs/saas/MANUAL_BILLING.md`: how a pilot customer is invoiced (by us, from this app, as a tenant), how payment is confirmed, and how the platform admin applies the plan and period end. Grace and expiry follow SUB-05. Every change produces a SubscriptionEvent (SUB-04).
 
 #### OBS-01 · Structured logs with correlation · P1 · M
@@ -575,7 +575,7 @@ Each slice is a vertical, independently releasable change: domain → applicatio
 | **1** ✅ | **Safe public entry points** (done) | SEC-01, EML-01, SEC-02, OPS-01 | ~3–4 d | Demo off in Production; absolute invitation links; 429s on abuse; CI on `main`; all tests green |
 | 2 ✅ | Production hosting baseline (done) | OPS-02, OPS-03, SEC-03, OBS-03, OPS-07 | ~3–4 d | Works behind a proxy with Secure cookies; sessions survive redeploy and scale-out; headers present; live/ready health; jobs locked |
 | 3 ✅ | Account recovery (done) | EML-02, AUTH-01, AUTH-02 | ~4–5 d | Forgot/reset works end to end via email; users can change their own password |
-| 4 | Entitlements and plan visibility | SUB-01…SUB-06, BILL-01 | ~1.5–2 wk | Server enforces the decided plans; read-only is consistent; tenants see usage and banners; history recorded; manual billing documented |
+| 4 ✅ | Entitlements and plan visibility (done) | SUB-01…SUB-06, BILL-01 | ~1.5–2 wk | Server enforces the decided plans; read-only is consistent; tenants see usage and banners; history recorded; manual billing documented |
 | 5 | Onboarding and trust | ONB-01, ONB-02, LEG-01, AUTH-03, L10N-00 | ~1–1.5 wk | New user goes from sign-up to first issued invoice alone; terms accepted and recorded; email verified before third-party email |
 | 6 | Send invoices | INV-01, EML-03 | ~3–4 d | Customer receives the invoice PDF by email; digest at most daily |
 | 7 | Data rights | DATA-01, DATA-02 | ~1–1.5 wk | Full export works on any plan; closure workflow per D8 |
