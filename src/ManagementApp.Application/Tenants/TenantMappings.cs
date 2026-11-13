@@ -100,7 +100,8 @@ public static class TenantMappings
         Split(subscription.Features));
 
     public static PlanDto ToDto(this SubscriptionPlan plan) => new(
-        plan.Code, plan.Name, plan.MaxUsers, plan.MaxInvoicesPerMonth, Split(plan.Features), plan.MonthlyPrice, plan.YearlyPrice);
+        plan.Code, plan.Name, plan.MaxUsers, plan.MaxInvoicesPerMonth, Split(plan.Features), plan.MonthlyPrice, plan.YearlyPrice,
+        SubscriptionPlans.Currency, IsDefault: plan == SubscriptionPlans.Trial); // new companies start with a trial
 
     public static CurrentTenantDto ToCurrentTenantDto(this Tenant tenant, DateTimeOffset now, int nextInvoiceNumber) => new(
         tenant.Id,

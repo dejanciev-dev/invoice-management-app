@@ -438,6 +438,9 @@ export interface Plan {
   features: PlanFeature[]
   monthlyPrice: number
   yearlyPrice: number
+  currency: string
+  /** The plan new companies start on. */
+  isDefault: boolean
 }
 
 export interface PlatformUser {

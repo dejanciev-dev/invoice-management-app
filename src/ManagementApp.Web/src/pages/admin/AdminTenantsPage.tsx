@@ -125,8 +125,10 @@ function CreateTenantForm({ onCancel }: { onCancel: () => void }) {
   const create = useCreateTenant()
   const plans = usePlans()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', email: '', country: '', currency: 'USD', planCode: 'trial', adminEmail: '', adminPassword: '' })
+  const [form, setForm] = useState({ name: '', email: '', country: '', currency: 'USD', planCode: '', adminEmail: '', adminPassword: '' })
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value })
+  // Until a plan is picked, the catalogue's default (the trial) is selected.
+  const planCode = form.planCode || plans.data?.find((p) => p.isDefault)?.code || ''
 
   if (create.data?.invitationToken) {
     const link = `${window.location.origin}/accept-invite?token=${encodeURIComponent(create.data.invitationToken)}`
@@ -159,7 +161,7 @@ function CreateTenantForm({ onCancel }: { onCancel: () => void }) {
                 address: null,
                 phone: null,
               },
-              planCode: form.planCode,
+              planCode,
               adminEmail: form.adminEmail,
               adminPassword: form.adminPassword || null,
             },
@@ -186,7 +188,7 @@ function CreateTenantForm({ onCancel }: { onCancel: () => void }) {
           </select>
         </Field>
         <Field label="Plan" htmlFor="t-plan">
-          <select id="t-plan" value={form.planCode} onChange={set('planCode')} className={inputClass}>
+          <select id="t-plan" value={planCode} onChange={set('planCode')} className={inputClass}>
             {(plans.data ?? []).map((p) => (
               <option key={p.code} value={p.code}>
                 {p.name}
