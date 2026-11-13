@@ -359,7 +359,7 @@ No **critical** tenant-isolation defect was found.
 
 ### Phase 1 — Production-ready SaaS foundation
 
-#### SEC-01 · Demo mode off by default; never seed demo data in Production · P0 · S
+#### SEC-01 · Demo mode off by default; never seed demo data in Production · P0 · S · **Done**
 - **Problem:** hard-coded demo credentials on the login page. A compose deployment seeds a platform admin with a public password.
 - **Behaviour:** add a `Demo:Enabled` setting, false by default and true in `appsettings.Development.json` and `compose.yaml`. Expose it through a new anonymous `GET /api/public-config` (`{ demoLogin, supportEmail, termsUrl, privacyUrl }`, extended later). The login page shows the demo button only when the flag is on. Startup **fails** if `Database:SeedDemoData=true` while the environment is Production (unless an explicit `Demo:AllowInProduction`, for a public demo site).
 - **Areas:** Api (endpoint, startup check), Infrastructure (initialiser), Web (LoginPage, api client), compose, README.
@@ -368,14 +368,14 @@ No **critical** tenant-isolation defect was found.
 - **Acceptance:** in Production config the button isn't rendered and the demo users don't exist. Demo seeding in Production stops startup with a clear message. Docker compose still demos as today.
 - **Tests:** API test for public-config. Initialiser test for the Production guard. Component test for the hidden/shown button.
 
-#### EML-01 · Absolute links in emails (`App:PublicBaseUrl`) · P0 · S
+#### EML-01 · Absolute links in emails (`App:PublicBaseUrl`) · P0 · S · **Done**
 - **Problem:** the invitation email link is relative and unusable.
 - **Behaviour:** a required, validated-on-start `App:PublicBaseUrl` option. An `IAppUrls` service in Application builds links (`AcceptInvitation(token)`, later `ResetPassword`, `Invoice`, …). Fix the invitation body.
 - **Areas:** Application (interface + InvitationHandlers), Infrastructure/Api (options), appsettings, README.
 - **Acceptance:** the queued invitation email contains `https://{host}/accept-invite?token=…`. The app refuses to start in Production without a valid absolute HTTPS base URL.
 - **Tests:** update the outbox and invitation tests to assert the full link. Options validation test.
 
-#### SEC-02 · Rate limiting on anonymous and auth endpoints · P0 · S–M
+#### SEC-02 · Rate limiting on anonymous and auth endpoints · P0 · S–M · **Done**
 - **Problem:** sign-up, login, invitation and (soon) password-reset endpoints can be hammered.
 - **Behaviour:** `AddRateLimiter` with named policies: `auth` (per client IP, e.g. 10/min for login, 5/hour for signup and forgot-password), `invitations` (per IP), `authenticated` (per user, generous). Returns 429 with ProblemDetails and `Retry-After`. Limits come from config. Correct client IPs depend on OPS-02.
 - **Areas:** Api (Program, endpoint groups), config, README.
@@ -383,7 +383,7 @@ No **critical** tenant-isolation defect was found.
 - **Acceptance:** exceeding the limit returns 429. Normal use is unaffected. Limits can be changed without a deploy.
 - **Tests:** integration test with tiny configured limits (signup 2/min → 3rd call 429).
 
-#### OPS-01 · CI runs on `main` · P1 · S
+#### OPS-01 · CI runs on `main` · P1 · S · **Done**
 - **Problem:** `.github/workflows/ci.yml` triggers on `push: [master]`. The default branch is `main`, so merges aren't built.
 - **Behaviour:** trigger on `main`. Optionally add `dotnet list package --vulnerable` and `npm audit --omit=dev --audit-level=high` as non-blocking steps (OPS-08 makes them blocking later).
 - **Acceptance:** a push to `main` starts CI. The README badge reflects `main`.
@@ -572,7 +572,7 @@ Each slice is a vertical, independently releasable change: domain → applicatio
 
 | # | Slice | Backlog items | Effort | Exit criteria |
 |---|---|---|---|---|
-| **1** | **Safe public entry points** | SEC-01, EML-01, SEC-02, OPS-01 | ~3–4 d | Demo off in Production; absolute invitation links; 429s on abuse; CI on `main`; all tests green |
+| **1** ✅ | **Safe public entry points** (done) | SEC-01, EML-01, SEC-02, OPS-01 | ~3–4 d | Demo off in Production; absolute invitation links; 429s on abuse; CI on `main`; all tests green |
 | 2 | Production hosting baseline | OPS-02, OPS-03, SEC-03, OBS-03, OPS-07 | ~3–4 d | Works behind a proxy with Secure cookies; sessions survive redeploy and scale-out; headers present; live/ready health; jobs locked |
 | 3 | Account recovery | EML-02, AUTH-01, AUTH-02 | ~4–5 d | Forgot/reset works end to end via email; users can change their own password |
 | 4 | Entitlements and plan visibility | SUB-01…SUB-06, BILL-01 | ~1.5–2 wk | Server enforces the decided plans; read-only is consistent; tenants see usage and banners; history recorded; manual billing documented |
