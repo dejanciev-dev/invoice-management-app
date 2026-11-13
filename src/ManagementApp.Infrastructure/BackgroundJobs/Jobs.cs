@@ -84,14 +84,20 @@ public sealed class SubscriptionExpiryJob(IServiceScopeFactory scopeFactory, Tim
     }
 }
 
-/// <summary>Runs the recurring jobs. Disable with <c>BackgroundJobs:Enabled=false</c> (the tests do).</summary>
+/// <summary>
+/// Runs the recurring jobs. Disable with <c>BackgroundJobs:Enabled=false</c> (the tests do). Every instance of the app
+/// runs a scheduler, but each job is leased through <see cref="JobLock"/>, so it runs once per interval in total.
+/// </summary>
 public sealed class BackgroundJobScheduler(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     TimeProvider timeProvider,
+    JobLock jobLock,
     AppMetrics metrics,
     ILogger<BackgroundJobScheduler> logger) : BackgroundService
 {
+    private TimeSpan Interval => TimeSpan.FromMinutes(configuration.GetValue("BackgroundJobs:IntervalMinutes", 360));
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!configuration.GetValue("BackgroundJobs:Enabled", true))
@@ -99,21 +105,44 @@ public sealed class BackgroundJobScheduler(
             return;
         }
 
-        var interval = TimeSpan.FromMinutes(configuration.GetValue("BackgroundJobs:IntervalMinutes", 360));
-        using var timer = new PeriodicTimer(interval, timeProvider);
+        using var timer = new PeriodicTimer(Interval, timeProvider);
         do
         {
-            await RunJobAsync<SubscriptionExpiryJob>((job, ct) => job.RunAsync(ct), stoppingToken);
-            await RunJobAsync<OverdueInvoiceReminderJob>((job, ct) => job.RunAsync(ct), stoppingToken);
+            await RunDueJobsAsync(stoppingToken);
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    /// <summary>Runs one job; a failure is logged and counted, and doesn't stop the other jobs.</summary>
-    private async Task RunJobAsync<TJob>(
+    /// <summary>Runs every job no other instance has run in this interval; returns how many it ran.</summary>
+    public async Task<int> RunDueJobsAsync(CancellationToken cancellationToken)
+    {
+        var ran = 0;
+        ran += await RunJobAsync<SubscriptionExpiryJob>((job, ct) => job.RunAsync(ct), cancellationToken) ? 1 : 0;
+        ran += await RunJobAsync<OverdueInvoiceReminderJob>((job, ct) => job.RunAsync(ct), cancellationToken) ? 1 : 0;
+        return ran;
+    }
+
+    /// <summary>Runs one job if this instance gets its lease; a failure is logged and counted, and doesn't stop the others.</summary>
+    private async Task<bool> RunJobAsync<TJob>(
         Func<TJob, CancellationToken, Task<int>> run, CancellationToken cancellationToken) where TJob : notnull
     {
         var name = typeof(TJob).Name;
+        try
+        {
+            // A little shorter than the interval, so this instance's own next tick (which can come slightly early)
+            // still finds the lease expired.
+            if (!await jobLock.TryAcquireAsync(name, Interval * 0.9, cancellationToken))
+            {
+                logger.LogDebug("Job {Job} skipped: another instance ran it in this interval", name);
+                return false;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Job {Job} could not be scheduled", name);
+            return false;
+        }
+
         try
         {
             using var scope = scopeFactory.CreateScope();
@@ -126,5 +155,7 @@ public sealed class BackgroundJobScheduler(
             metrics.JobRan(name, succeeded: false);
             logger.LogError(ex, "Job {Job} failed", name);
         }
+
+        return true;
     }
 }

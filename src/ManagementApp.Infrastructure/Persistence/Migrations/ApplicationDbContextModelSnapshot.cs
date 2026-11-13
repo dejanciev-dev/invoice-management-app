@@ -859,6 +859,24 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                     b.ToTable("TenantMemberships");
                 });
 
+            modelBuilder.Entity("ManagementApp.Infrastructure.BackgroundJobs.JobLease", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset>("LockedUntil")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("JobLeases");
+                });
+
             modelBuilder.Entity("ManagementApp.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")

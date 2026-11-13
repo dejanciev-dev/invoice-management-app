@@ -79,6 +79,7 @@ public static class DependencyInjection
         services.AddEmail(configuration);
         services.AddSingleton<IInvoicePdfRenderer, QuestPdfInvoiceRenderer>();
 
+        services.AddSingleton<JobLock>();
         services.AddSingleton<TenantJobRunner>();
         services.AddSingleton<OverdueInvoiceReminderJob>();
         services.AddSingleton<SubscriptionExpiryJob>();
