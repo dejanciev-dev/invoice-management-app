@@ -44,6 +44,9 @@ public interface IApplicationDbContext
     /// <summary>The outbox; see <see cref="Emails.EmailOutbox"/>.</summary>
     DbSet<EmailMessage> EmailMessages { get; }
 
+    /// <summary>Account emails, which belong to no tenant; see <see cref="Emails.SystemEmailOutbox"/>.</summary>
+    DbSet<SystemEmailMessage> SystemEmailMessages { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 
     /// <summary>Runs <paramref name="operation"/> in a transaction that works with the configured retry strategy.</summary>
