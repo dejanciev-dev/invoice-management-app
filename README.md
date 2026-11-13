@@ -166,6 +166,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `POST` | `/api/auth/password/forgot` | Email a password reset link (same answer whether or not the account exists; at most 3 emails an hour per account) |
 | `POST` | `/api/auth/password/reset` | Set a new password with the emailed code (valid 2 hours, once); ends every session of the account |
 | `GET` | `/api/me` | The signed-in user, their companies and the active one |
+| `PUT` `POST` | `/api/account/profile`, `/api/account/password`, `/api/account/sign-out-everywhere` | Your own account: display name, password change (other sessions end), sign out on every device |
 | `GET` `POST` | `/api/invitations/{token}`, `/api/invitations/accept` | Preview and accept an invitation |
 | `GET` `PUT` | `/api/tenant`, `/api/tenant/settings` | Company settings |
 | `GET` `POST` `DELETE` | `/api/tenant/logo` | Company logo |

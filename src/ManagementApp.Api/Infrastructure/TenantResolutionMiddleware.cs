@@ -30,7 +30,7 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
 
     // Endpoints that are not about a tenant the user works in: sign-in, accepting invitations, the platform admin
     // area and ending an impersonation. They run with an empty tenant context, so tenant data is invisible to them.
-    private static readonly PathString[] TenantlessPaths = ["/api/auth", "/api/invitations", "/api/admin", "/api/impersonation"];
+    private static readonly PathString[] TenantlessPaths = ["/api/auth", "/api/account", "/api/invitations", "/api/admin", "/api/impersonation"];
 
     public async Task InvokeAsync(
         HttpContext httpContext,
