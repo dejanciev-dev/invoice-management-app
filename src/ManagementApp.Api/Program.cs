@@ -22,12 +22,15 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddAppAuthorization();
 builder.Services.AddAppRateLimiting(builder.Configuration);
+builder.Services.AddReverseProxySupport(builder.Configuration);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 await app.Services.InitialiseDatabaseAsync();
 
+// First, so everything after it (https redirection, cookies, rate limits, audit) sees the real client and scheme.
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

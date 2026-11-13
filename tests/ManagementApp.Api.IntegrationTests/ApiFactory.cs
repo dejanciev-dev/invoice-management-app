@@ -2,6 +2,7 @@ using ManagementApp.Application.Accounts;
 using ManagementApp.Application.Common.Interfaces;
 using ManagementApp.Infrastructure.Identity;
 using ManagementApp.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,7 +83,32 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+
+            services.AddSingleton<IStartupFilter, RemoteIpStartupFilter>();
         });
+    }
+
+    /// <summary>The address a request with this header appears to come from; the test server has none of its own.</summary>
+    public const string RemoteIpHeader = "X-Test-Remote-Ip";
+
+    // Requests go over https, like in production: the session cookie is only sent over https.
+    public ApiFactory() => ClientOptions.BaseAddress = new Uri("https://localhost");
+
+    private sealed class RemoteIpStartupFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                if (context.Request.Headers.TryGetValue(RemoteIpHeader, out var ip))
+                {
+                    context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(ip.ToString());
+                }
+
+                return nextMiddleware(context);
+            });
+            next(app);
+        };
     }
 
     /// <summary>Signs up a new user with their own company and returns a client that sends their bearer token.</summary>
