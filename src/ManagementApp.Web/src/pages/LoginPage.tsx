@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { useLogin } from '../api/auth'
+import { useLogin, usePublicConfig } from '../api/auth'
 import { ApiError } from '../api/client'
 import { AuthShell } from '../components/AuthShell'
 import { inputClass } from '../components/styles'
@@ -10,6 +10,7 @@ const DEMO_ACCOUNT = { email: 'demo@example.com', password: 'Demo123!' }
 
 export function LoginPage() {
   const login = useLogin()
+  const demoLogin = usePublicConfig().data?.demoLogin ?? false
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
@@ -79,9 +80,11 @@ export function LoginPage() {
         <Button type="submit" className="w-full" loading={login.isPending}>
           Sign in
         </Button>
-        <Button variant="secondary" className="w-full" onClick={useDemoAccount} disabled={login.isPending}>
-          Try the demo account
-        </Button>
+        {demoLogin && (
+          <Button variant="secondary" className="w-full" onClick={useDemoAccount} disabled={login.isPending}>
+            Try the demo account
+          </Button>
+        )}
       </form>
     </AuthShell>
   )

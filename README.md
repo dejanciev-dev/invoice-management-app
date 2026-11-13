@@ -133,6 +133,7 @@ npm run dev
 ```
 
 The interactive API reference is at <http://localhost:5080/scalar> in Development.
+**Demo mode.** `Database__SeedDemoData=true` creates the demo companies and accounts above, and `Demo__Enabled=true` shows the **Try the demo account** button. Both are on in Development and in `compose.yaml`, and off by default everywhere else. The demo passwords are public, so the app refuses to start if demo seeding is on in Production. A deliberate public demo site (like `compose.yaml`) also sets `Demo__AllowInProduction=true`.
 **File storage.** Files are kept on the local disk by default (`App_Data/files` under the API, or the `files` volume in Docker). To use Azure Blob Storage, set `FileStorage__Provider=AzureBlob`, `FileStorage__AzureConnectionString` and optionally `FileStorage__AzureContainerName` (default `files`); the container is created on first use and is never public. The Blob Storage tests run when `FILESTORAGE_TEST_AZURE` holds a connection string, e.g. `UseDevelopmentStorage=true` with [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) running.
 **Email.** By default emails are only written to the log (`Email__Provider=Log`). To send them, set `Email__Provider=Smtp`, `Email__FromAddress` (the address every email is sent from) and `Email__Smtp__Host`, `__Port` (587), `__Security` (`Auto`, `StartTls`, `SslOnConnect` or `None`), `__Username` and `__Password`. Any SMTP service works (Postmark, SendGrid, Mailgun, Microsoft 365) as well as a local mail catcher such as Mailpit. Several API instances can run the worker at once: each email is claimed before it is sent.
 
@@ -152,6 +153,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 
 | Method | Route | Description |
 | --- | --- | --- |
+| `GET` | `/api/public-config` | Settings for the sign-in pages (whether the demo account is offered) |
 | `POST` | `/api/auth/signup` | Create an account and a new company |
 | `POST` | `/api/auth/login?useCookies=true` | Sign in (cookie), or omit `useCookies` to get a bearer token |
 | `POST` | `/api/auth/logout` | Sign out |

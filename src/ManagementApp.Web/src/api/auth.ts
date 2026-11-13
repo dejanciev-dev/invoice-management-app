@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, apiRequest, json, setActiveTenantId } from './client'
-import type { Permission, Session } from './types'
+import type { Permission, PublicConfig, Session } from './types'
 
 export const currentUserKey = ['auth', 'me'] as const
+export const publicConfigKey = ['public-config'] as const
+
+/** Server settings for the sign-in pages; they only change with a deployment. */
+export function usePublicConfig() {
+  return useQuery({
+    queryKey: publicConfigKey,
+    queryFn: () => apiRequest<PublicConfig>('/public-config'),
+    staleTime: Infinity,
+  })
+}
 
 export interface Credentials {
   email: string

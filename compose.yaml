@@ -1,6 +1,6 @@
 # Runs the app with SQL Server: `docker compose up --build`, then open http://localhost:8080
 # Sign in with demo@example.com / Demo123! (a company admin) or admin@example.com / Admin123! (platform admin),
-# both seeded on first start.
+# both seeded on first start. This is a local demo: the Demo__* settings below must never reach a real server.
 
 services:
   db:
@@ -24,6 +24,8 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: Server=db;Database=ManagementApp;User Id=sa;Password=${DB_PASSWORD:-Local_dev_Passw0rd};TrustServerCertificate=True
       Database__SeedDemoData: "true"
+      Demo__Enabled: "true"
+      Demo__AllowInProduction: "true"
       FileStorage__LocalRootPath: /home/app/files
     volumes:
       - keys:/home/app/.aspnet/DataProtection-Keys
