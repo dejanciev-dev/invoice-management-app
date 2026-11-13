@@ -29,7 +29,6 @@ services:
       Demo__AllowInProduction: "true"
       FileStorage__LocalRootPath: /home/app/files
     volumes:
-      - keys:/home/app/.aspnet/DataProtection-Keys
       - files:/home/app/files
     depends_on:
       db:
@@ -37,5 +36,4 @@ services:
 
 volumes:
   sqldata:
-  keys:
   files:

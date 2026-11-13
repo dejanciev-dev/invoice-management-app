@@ -6,6 +6,7 @@ using ManagementApp.Domain.Entities;
 using ManagementApp.Domain.Messaging;
 using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.Identity;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -17,7 +18,7 @@ public class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
     ICurrentUserService currentUserService,
     ITenantContext tenantContext,
-    TimeProvider timeProvider) : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext
+    TimeProvider timeProvider) : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext, IDataProtectionKeyContext
 {
     public const string TenantFilter = "Tenant";
 
@@ -46,6 +47,9 @@ public class ApplicationDbContext(
     public DbSet<ImpersonationSession> ImpersonationSessions => Set<ImpersonationSession>();
 
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+
+    /// <summary>The keys that protect session cookies and tokens, shared by every instance of the app.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>Read by the tenant query filters on every query, so it always reflects the current scope.</summary>
     private Guid? CurrentTenantId => tenantContext.TenantId;
