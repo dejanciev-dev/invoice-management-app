@@ -31,6 +31,7 @@ await app.Services.InitialiseDatabaseAsync();
 
 // First, so everything after it (https redirection, cookies, rate limits, audit) sees the real client and scheme.
 app.UseForwardedHeaders();
+app.UseSecurityHeaders(app.Environment);
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
