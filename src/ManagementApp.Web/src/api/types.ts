@@ -488,3 +488,18 @@ export interface SubscriptionEvent {
   maxInvoicesPerMonth: number | null
   note: string | null
 }
+
+export interface Usage {
+  /** Null means unlimited. */
+  limit: number | null
+  used: number
+}
+
+/** The company's plan with this month's usage, and the plans it could move to. */
+export interface TenantPlan {
+  subscription: Subscription
+  invoices: Usage
+  invoicesResetAt: string
+  seats: Usage
+  plans: Plan[]
+}

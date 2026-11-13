@@ -11,6 +11,7 @@ import type {
   Member,
   Paged,
   Permission,
+  TenantPlan,
   TenantRole,
   TenantSettings,
 } from './types'
@@ -21,6 +22,7 @@ export const tenantKeys = {
   invitations: ['tenant', 'invitations'] as const,
   audit: (page: number, action?: string) => ['tenant', 'audit', page, action] as const,
   reports: ['tenant', 'reports'] as const,
+  plan: ['tenant', 'plan'] as const,
 }
 
 export const tenantLogoUrl = (version?: string | number) =>
@@ -133,4 +135,9 @@ export function useAcceptInvitation() {
     mutationFn: (request: { token: string; password: string | null; displayName: string | null }) =>
       apiRequest<{ tenantId: string }>('/invitations/accept', { method: 'POST', ...json(request) }),
   })
+}
+
+/** The company's plan, status and usage; any member may see it. */
+export function useTenantPlan() {
+  return useQuery({ queryKey: tenantKeys.plan, queryFn: () => apiRequest<TenantPlan>('/tenant/subscription') })
 }

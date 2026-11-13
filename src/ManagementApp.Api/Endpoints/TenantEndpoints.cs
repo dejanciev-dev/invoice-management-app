@@ -28,6 +28,8 @@ public static class TenantEndpoints
             .RequireAuthorization(Policies.TenantMember);
 
         tenant.MapGet("/", GetCurrentTenant).WithSummary("The active company's settings");
+        tenant.MapGet("/subscription", GetPlan)
+            .WithSummary("The company's plan, its status, this month's usage and the plans available");
         tenant.MapPut("/settings", UpdateSettings).RequireAuthorization(Policies.Has(Permission.SettingsManage))
             .WithSummary("Update the company profile and settings");
         tenant.MapGet("/logo", GetLogo).WithSummary("The company logo");
@@ -61,6 +63,9 @@ public static class TenantEndpoints
         TypedResults.Ok(await handler.HandleAsync(cancellationToken));
 
     private static async Task<Ok<CurrentTenantDto>> GetCurrentTenant(GetCurrentTenantHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(cancellationToken));
+
+    private static async Task<Ok<TenantPlanDto>> GetPlan(GetTenantPlanHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleAsync(cancellationToken));
 
     private static async Task<Ok<CurrentTenantDto>> UpdateSettings(

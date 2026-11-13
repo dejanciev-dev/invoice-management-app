@@ -1,5 +1,6 @@
 import { ImageUp, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { tenantLogoUrl, useCurrentTenant, useUpdateTenantSettings, useUploadLogo } from '../api/tenant'
 import { TenantSettingsForm } from '../components/TenantSettingsForm'
@@ -30,7 +31,9 @@ export function SettingsPage() {
             {subscription.currentPeriodEndsAt && <> · renews {formatDateTime(subscription.currentPeriodEndsAt)}</>}
           </p>
         </div>
-        <p className="text-xs text-muted">Contact support to change your plan.</p>
+        <Link to="/plan" className="text-sm font-medium text-brand hover:text-brand-strong">
+          Plan &amp; usage
+        </Link>
       </Card>
 
       <TenantSettingsForm

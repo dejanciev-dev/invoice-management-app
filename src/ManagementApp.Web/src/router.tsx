@@ -74,6 +74,7 @@ export const router = createBrowserRouter([
               { path: 'activity', lazy: lazy(() => import('./pages/ActivityPage'), (m) => m.ActivityPage) },
               { path: 'emails', lazy: lazy(() => import('./pages/EmailsPage'), (m) => m.EmailsPage) },
               { path: 'settings', lazy: lazy(() => import('./pages/SettingsPage'), (m) => m.SettingsPage) },
+              { path: 'plan', lazy: lazy(() => import('./pages/PlanPage'), (m) => m.PlanPage) },
               { path: 'account', lazy: lazy(() => import('./pages/AccountPage'), (m) => m.AccountPage) },
               { path: '*', element: <NotFoundPage /> },
             ],

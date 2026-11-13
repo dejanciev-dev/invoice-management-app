@@ -169,6 +169,7 @@ All endpoints return [problem details](https://www.rfc-editor.org/rfc/rfc9457) o
 | `PUT` `POST` | `/api/account/profile`, `/api/account/password`, `/api/account/sign-out-everywhere` | Your own account: display name, password change (other sessions end), sign out on every device |
 | `GET` `POST` | `/api/invitations/{token}`, `/api/invitations/accept` | Preview and accept an invitation |
 | `GET` `PUT` | `/api/tenant`, `/api/tenant/settings` | Company settings |
+| `GET` | `/api/tenant/subscription` | The company's plan and status, invoices issued this month and seats used against the limits, and the plans available |
 | `GET` `POST` `DELETE` | `/api/tenant/logo` | Company logo |
 | `GET` `POST` `PUT` `DELETE` | `/api/tenant/users/...` | Members, roles, permissions, invitations, password resets |
 | `GET` | `/api/tenant/audit-logs` | The company's activity log |

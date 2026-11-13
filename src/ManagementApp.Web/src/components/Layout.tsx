@@ -5,6 +5,7 @@ import { tenantLogoUrl } from '../api/tenant'
 import type { Permission } from '../api/types'
 import { roleLabels } from '../lib/labels'
 import { ImpersonationBanner } from './ImpersonationBanner'
+import { SubscriptionBanner } from './SubscriptionBanner'
 import { navLinkClass } from './styles'
 import { Button } from './ui'
 
@@ -27,6 +28,7 @@ const tenantNav: { to: string; label: string; permission: Permission; end?: bool
   { to: '/users', label: 'Users', permission: 'UsersManage' },
   { to: '/activity', label: 'Activity', permission: 'AuditLogView' },
   { to: '/emails', label: 'Emails', permission: 'SettingsManage' },
+  { to: '/plan', label: 'Plan', permission: 'SettingsManage' },
   { to: '/settings', label: 'Settings', permission: 'SettingsManage' },
 ]
 
@@ -35,6 +37,7 @@ export function Layout() {
   return (
     <div className="min-h-dvh">
       <ImpersonationBanner />
+      <SubscriptionBanner />
       <header className="sticky top-0 z-10 border-b border-line bg-surface/85 backdrop-blur print:hidden">
         <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
           <div className="flex min-w-0 items-center gap-6">
