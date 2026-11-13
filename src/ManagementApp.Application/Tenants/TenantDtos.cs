@@ -54,6 +54,10 @@ public sealed record TenantSettingsDto
     public NotificationSettingsDto Notifications { get; init; } = new();
 }
 
+/// <summary>
+/// The subscription as it applies now: plan, limits and features are those in force (Free once a trial has ended),
+/// while <see cref="Status"/> is what is stored.
+/// </summary>
 public sealed record SubscriptionDto(
     string PlanCode,
     string PlanName,
@@ -64,7 +68,11 @@ public sealed record SubscriptionDto(
     DateTimeOffset? CurrentPeriodEndsAt,
     int? MaxUsers,
     int? MaxInvoicesPerMonth,
-    IReadOnlyList<PlanFeature> Features);
+    IReadOnlyList<PlanFeature> Features,
+    bool CanChangeData,
+    string? ReadOnlyReason,
+    DateTimeOffset? GraceEndsAt,
+    DateTimeOffset? AccessEndsAt);
 
 /// <summary>The current tenant's configuration, plus values derived from it for the invoice editor.</summary>
 public sealed record CurrentTenantDto(

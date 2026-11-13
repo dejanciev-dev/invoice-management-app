@@ -60,13 +60,13 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
 
         var created = await (await admin.PostJsonAsync("/api/admin/tenants", new CreateTenantCommand(
             new TenantProfileDto { Name = "Umbrella Corp", Country = "de", DefaultCurrency = "EUR", TimeZone = "Europe/Berlin", TaxNumber = "DE999" },
-            "professional", ownerEmail, AdminPassword: null))).ReadAsync<CreatedTenantDto>();
+            SubscriptionPlans.Professional.Code, ownerEmail, AdminPassword: null))).ReadAsync<CreatedTenantDto>();
 
         created.InvitationToken.ShouldNotBeNull();
         var details = await admin.GetAsync<TenantDetailsDto>($"/api/admin/tenants/{created.Id}");
         details.Settings.Profile.Name.ShouldBe("Umbrella Corp");
         details.Settings.Profile.Country.ShouldBe("DE");
-        details.Subscription.PlanCode.ShouldBe("professional");
+        details.Subscription.PlanCode.ShouldBe(SubscriptionPlans.Professional.Code);
 
         await factory.CreateClient().PostJsonAsync("/api/invitations/accept", new AcceptInvitationCommand(created.InvitationToken, ApiFactory.Password, null));
         var owner = await factory.SignInWithBearerAsync(ownerEmail);
@@ -142,7 +142,7 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         var (admin, _) = await factory.CreatePlatformAdminAsync();
 
         await admin.PutJsonAsync($"/api/admin/tenants/{tenant.TenantId}/subscription", new UpdateSubscriptionCommand(
-            "starter", SubscriptionStatus.Active, BillingCycle.Monthly, null, null, CustomMaxUsers: null, CustomMaxInvoicesPerMonth: 1));
+            SubscriptionPlans.Starter.Code, SubscriptionStatus.Active, BillingCycle.Monthly, null, null, CustomMaxUsers: null, CustomMaxInvoicesPerMonth: 1));
 
         (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Created);
         (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-002"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -152,16 +152,48 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
     }
 
     [Fact]
-    public async Task ExpiredSubscriptions_AreReadOnly()
+    public async Task AnEndedTrial_MovesToTheFreePlan()
+    {
+        var tenant = await factory.CreateTenantAsync();
+        var (admin, _) = await factory.CreatePlatformAdminAsync();
+
+        await admin.PutJsonAsync($"/api/admin/tenants/{tenant.TenantId}/subscription", new UpdateSubscriptionCommand(
+            SubscriptionPlans.Trial.Code, SubscriptionStatus.Trialing, BillingCycle.Monthly, factory.Clock.GetUtcNow().AddDays(-1), null, null, null));
+        var session = await tenant.Client.GetAsync<SessionDto>("/api/me");
+
+        session.ActiveTenant!.Subscription.PlanCode.ShouldBe(SubscriptionPlans.Free.Code);
+        session.ActiveTenant.Subscription.CanChangeData.ShouldBeTrue();
+        (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await tenant.Client.GetAsync("/api/reports/summary", Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden); // not on Free
+    }
+
+    [Fact]
+    public async Task AnOverduePayment_KeepsAccessDuringTheGracePeriod()
+    {
+        var tenant = await factory.CreateTenantAsync();
+        var (admin, _) = await factory.CreatePlatformAdminAsync();
+
+        await admin.PutJsonAsync($"/api/admin/tenants/{tenant.TenantId}/subscription", new UpdateSubscriptionCommand(
+            SubscriptionPlans.Starter.Code, SubscriptionStatus.PastDue, BillingCycle.Monthly, null, null, null, null));
+        var session = await tenant.Client.GetAsync<SessionDto>("/api/me");
+
+        session.ActiveTenant!.Subscription.GraceEndsAt.ShouldBe(factory.Clock.GetUtcNow() + TenantSubscription.GracePeriod);
+        (await tenant.Client.PostJsonAsync("/api/customers", NewCustomer("Still Fine"))).StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task AfterTheGracePeriod_DataIsReadOnly()
     {
         var tenant = await factory.CreateTenantAsync();
         var invoice = await tenant.Client.CreateInvoiceAsync("INV-001");
         var (admin, _) = await factory.CreatePlatformAdminAsync();
 
         await admin.PutJsonAsync($"/api/admin/tenants/{tenant.TenantId}/subscription", new UpdateSubscriptionCommand(
-            "trial", SubscriptionStatus.Trialing, BillingCycle.Monthly, factory.Clock.GetUtcNow().AddDays(-1), null, null, null));
+            SubscriptionPlans.Starter.Code, SubscriptionStatus.PastDue, BillingCycle.Monthly, null, null, null, null,
+            GraceEndsAt: factory.Clock.GetUtcNow().AddDays(-1)));
 
         (await tenant.Client.GetAsync($"/api/invoices/{invoice.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await tenant.Client.GetAsync("/api/invoices/export", Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await tenant.Client.PutJsonAsync($"/api/invoices/{invoice.Id}", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-002"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.PostJsonAsync("/api/customers", NewCustomer("Too Late"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);

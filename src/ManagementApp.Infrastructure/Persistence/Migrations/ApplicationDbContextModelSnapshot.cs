@@ -1404,6 +1404,9 @@ namespace ManagementApp.Infrastructure.Persistence.Migrations
                             b1.Property<int>("Features")
                                 .HasColumnType("int");
 
+                            b1.Property<DateTimeOffset?>("GraceEndsAt")
+                                .HasColumnType("datetimeoffset");
+
                             b1.Property<int?>("MaxInvoicesPerMonth")
                                 .HasColumnType("int");
 

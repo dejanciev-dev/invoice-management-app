@@ -226,6 +226,13 @@ export interface Subscription {
   maxUsers: number | null
   maxInvoicesPerMonth: number | null
   features: PlanFeature[]
+  /** False when the company is read-only; reading and exporting always work. */
+  canChangeData: boolean
+  readOnlyReason: string | null
+  /** For an overdue payment: when the company becomes read-only. */
+  graceEndsAt: string | null
+  /** For a cancelled subscription: when the company becomes read-only. */
+  accessEndsAt: string | null
 }
 
 export interface TenantAccess {

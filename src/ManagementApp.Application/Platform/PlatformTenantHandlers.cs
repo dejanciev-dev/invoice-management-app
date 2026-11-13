@@ -62,7 +62,7 @@ internal static class TenantListExtensions
             t.Email,
             t.Country,
             t.Status,
-            t.Subscription.PlanCode,
+            t.Subscription.EntitlementsAt(now).PlanCode,
             t.Subscription.EffectiveStatus(now),
             userCounts.GetValueOrDefault(t.Id),
             invoiceCounts.GetValueOrDefault(t.Id),
@@ -218,7 +218,8 @@ public sealed class ChangeTenantStatusHandler(
 public sealed class UpdateSubscriptionHandler(
     IApplicationDbContext context,
     IAuditLogger auditLogger,
-    IValidator<UpdateSubscriptionCommand> validator)
+    IValidator<UpdateSubscriptionCommand> validator,
+    TimeProvider timeProvider)
 {
     public async Task HandleAsync(Guid tenantId, UpdateSubscriptionCommand command, CancellationToken cancellationToken)
     {
@@ -236,6 +237,9 @@ public sealed class UpdateSubscriptionHandler(
         subscription.BillingCycle = command.BillingCycle;
         subscription.TrialEndsAt = command.TrialEndsAt;
         subscription.CurrentPeriodEndsAt = command.CurrentPeriodEndsAt;
+        subscription.GraceEndsAt = command.Status == SubscriptionStatus.PastDue
+            ? command.GraceEndsAt ?? timeProvider.GetUtcNow().Add(TenantSubscription.GracePeriod)
+            : null;
 
         auditLogger.Add(new AuditEntry(AuditActions.TenantSubscriptionChanged)
         {

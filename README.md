@@ -43,7 +43,7 @@ The backend is an **ASP.NET Core 10** API built with **Clean Architecture**. The
 - **Platform admin area:** dashboard, tenant management (create, edit, activate, deactivate, suspend, delete with safeguards), subscription plans and limits, global user management and platform-wide activity.
 - **Impersonation:** platform admins can use the app as a tenant user for support, without ever seeing a password. A banner is shown throughout, it ends automatically after an hour, and every action is recorded against the admin.
 - **Audit log:** sign-ins, invoice and payment changes, user and permission changes, tenant changes and impersonation. Tenant admins see their own company's log; platform admins see everything.
-- **Subscription-ready:** plans with user and invoice limits and plan features, trials and expiry (read-only when expired). No payment provider is wired in yet.
+- **Subscription-ready:** Free, Starter (€9), Professional (€19) and Business (€39) plans with user and invoice limits and plan features, all defined in `SubscriptionPlans`. A 14-day trial moves to Free when it ends. An overdue payment keeps full access for a 14-day grace period, then the company is read-only, and a cancelled subscription runs to the end of its paid period. Reading and exporting data always work. No payment provider is wired in yet.
 - **Helpful errors:** validation runs on the client (Zod) and the server (FluentValidation). Server errors such as a duplicate invoice number appear next to the field they refer to.
 - **Responsive** layout with **light and dark** themes.
 

@@ -68,7 +68,9 @@ public sealed record UpdateSubscriptionCommand(
     DateTimeOffset? CurrentPeriodEndsAt,
     // Leave null to use the plan's limits.
     int? CustomMaxUsers,
-    int? CustomMaxInvoicesPerMonth);
+    int? CustomMaxInvoicesPerMonth,
+    // For PastDue: when the tenant becomes read-only; leave null for the standard grace period from now.
+    DateTimeOffset? GraceEndsAt = null);
 
 public sealed record PlatformUserDto(
     string Id,
