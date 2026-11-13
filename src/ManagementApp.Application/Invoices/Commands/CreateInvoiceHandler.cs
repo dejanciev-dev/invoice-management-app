@@ -20,7 +20,7 @@ public sealed class CreateInvoiceHandler(
     public async Task<InvoiceDto> HandleAsync(SaveInvoiceCommand command, CancellationToken cancellationToken)
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken);
-        await subscriptionGuard.EnsureCanCreateInvoiceAsync(cancellationToken);
+        await subscriptionGuard.EnsureCanChangeDataAsync(cancellationToken);
 
         var tenantId = tenantContext.RequireTenantId();
         await context.Customers.EnsureCustomerCanBeUsedAsync(command.CustomerId, currentCustomerId: null, cancellationToken);

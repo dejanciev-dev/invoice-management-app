@@ -41,6 +41,8 @@ public sealed class IssueInvoiceHandler(
             // Anything that throws from here on (an invoice that is not a draft, a number already in use) rolls the
             // transaction back, and with it the number just taken.
             var number = tenant.InvoiceSettings.FormatNumber(await context.TakeNextInvoiceNumberAsync(tenantId, cancellationToken));
+            // Counted while the number sequence is locked, so concurrent issues can't overrun the monthly limit.
+            await subscriptionGuard.EnsureCanIssueInvoiceAsync(cancellationToken);
             if (await context.Invoices.AnyAsync(i => i.InvoiceNumber == number, cancellationToken))
             {
                 throw new DomainRuleException(

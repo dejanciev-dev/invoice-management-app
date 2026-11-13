@@ -144,8 +144,9 @@ public sealed class PlatformAdminTests(ApiFactory factory) : IClassFixture<ApiFa
         await admin.PutJsonAsync($"/api/admin/tenants/{tenant.TenantId}/subscription", new UpdateSubscriptionCommand(
             SubscriptionPlans.Starter.Code, SubscriptionStatus.Active, BillingCycle.Monthly, null, null, CustomMaxUsers: null, CustomMaxInvoicesPerMonth: 1));
 
-        (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-001"))).StatusCode.ShouldBe(HttpStatusCode.Created);
-        (await tenant.Client.PostJsonAsync("/api/invoices", NewInvoice("INV-002"))).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        await tenant.Client.CreateIssuedInvoiceAsync("INV-001");
+        var second = await tenant.Client.CreateInvoiceAsync("INV-002"); // drafts don't count
+        (await tenant.Client.PostAsync($"/api/invoices/{second.Id}/issue", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.GetAsync("/api/reports/summary", Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.GetAsync("/api/tenant/audit-logs", Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await tenant.Client.GetAsync("/api/invoices/export", Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);

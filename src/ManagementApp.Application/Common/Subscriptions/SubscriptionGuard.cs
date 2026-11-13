@@ -21,16 +21,22 @@ public sealed class SubscriptionGuard(IApplicationDbContext context, ITenantCont
     public async Task EnsureCanChangeDataAsync(CancellationToken cancellationToken) =>
         EnsureAllowsChanges(await GetPlanAsync(tenantContext.RequireTenantId(), cancellationToken));
 
-    public async Task EnsureCanCreateInvoiceAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Checks the monthly limit, which counts invoices issued in the company's calendar month (decision D4): drafts
+    /// are free. Call it inside the issue transaction, after taking the invoice number: the number sequence is locked
+    /// per tenant then, so two invoices issued at once can't both take the last place.
+    /// </summary>
+    public async Task EnsureCanIssueInvoiceAsync(CancellationToken cancellationToken)
     {
         var tenantId = tenantContext.RequireTenantId();
-        var plan = await GetPlanAsync(tenantId, cancellationToken);
+        var (plan, timeZone) = await GetPlanAndTimeZoneAsync(tenantId, cancellationToken);
         EnsureAllowsChanges(plan);
 
-        var (used, _) = await CountInvoicesThisMonthAsync(cancellationToken);
+        var (used, _) = await CountInvoicesIssuedThisMonthAsync(timeZone, cancellationToken);
         if (new Quota(plan.MaxInvoicesPerMonth, used).IsReached)
         {
-            throw new ForbiddenException($"Your plan allows {plan.MaxInvoicesPerMonth} invoices per month. Upgrade to create more.");
+            throw new ForbiddenException(
+                $"Your plan allows {plan.MaxInvoicesPerMonth} issued invoices per month. Upgrade to issue more, or keep this one as a draft.");
         }
     }
 
@@ -58,8 +64,8 @@ public sealed class SubscriptionGuard(IApplicationDbContext context, ITenantCont
     public async Task<TenantEntitlements> GetAsync(CancellationToken cancellationToken)
     {
         var tenantId = tenantContext.RequireTenantId();
-        var plan = await GetPlanAsync(tenantId, cancellationToken);
-        var (invoices, resetsAt) = await CountInvoicesThisMonthAsync(cancellationToken);
+        var (plan, timeZone) = await GetPlanAndTimeZoneAsync(tenantId, cancellationToken);
+        var (invoices, resetsAt) = await CountInvoicesIssuedThisMonthAsync(timeZone, cancellationToken);
         var seats = await CountSeatsAsync(tenantId, cancellationToken);
         return new TenantEntitlements(plan, new Quota(plan.MaxInvoicesPerMonth, invoices), resetsAt, new Quota(plan.MaxUsers, seats));
     }
@@ -72,13 +78,13 @@ public sealed class SubscriptionGuard(IApplicationDbContext context, ITenantCont
         }
     }
 
-    /// <summary>Invoices counted against this month's limit, and when the count starts again.</summary>
-    private async Task<(int Used, DateTimeOffset ResetsAt)> CountInvoicesThisMonthAsync(CancellationToken cancellationToken)
+    /// <summary>Invoices issued in the company's current calendar month (voided ones too), and when the count starts again.</summary>
+    private async Task<(int Used, DateTimeOffset ResetsAt)> CountInvoicesIssuedThisMonthAsync(
+        string? timeZone, CancellationToken cancellationToken)
     {
-        var now = timeProvider.GetUtcNow();
-        var monthStart = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
-        var used = await context.Invoices.CountAsync(i => i.Created >= monthStart, cancellationToken);
-        return (used, monthStart.AddMonths(1));
+        var (start, end) = TenantTime.LocalMonth(timeZone, timeProvider.GetUtcNow());
+        var used = await context.Invoices.CountAsync(i => i.IssuedAt >= start && i.IssuedAt < end, cancellationToken);
+        return (used, end);
     }
 
     private async Task<int> CountSeatsAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -91,14 +97,17 @@ public sealed class SubscriptionGuard(IApplicationDbContext context, ITenantCont
         return members + invitations;
     }
 
-    private async Task<Entitlements> GetPlanAsync(Guid tenantId, CancellationToken cancellationToken)
+    private async Task<Entitlements> GetPlanAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        (await GetPlanAndTimeZoneAsync(tenantId, cancellationToken)).Plan;
+
+    private async Task<(Entitlements Plan, string TimeZone)> GetPlanAndTimeZoneAsync(Guid tenantId, CancellationToken cancellationToken)
     {
-        var subscription = await context.Tenants
+        var tenant = await context.Tenants
             .AsNoTracking()
             .Where(t => t.Id == tenantId)
-            .Select(t => t.Subscription)
+            .Select(t => new { t.Subscription, t.TimeZone })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException(nameof(Tenant), tenantId);
-        return subscription.EntitlementsAt(timeProvider.GetUtcNow());
+        return (tenant.Subscription.EntitlementsAt(timeProvider.GetUtcNow()), tenant.TimeZone);
     }
 }
