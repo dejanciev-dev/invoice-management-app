@@ -398,7 +398,7 @@ No **critical** tenant-isolation defect was found.
 - **Acceptance:** sessions survive a container redeploy and work across two instances.
 - **Tests:** an infrastructure test that keys are written to the DB.
 
-#### EML-02 · Platform (tenantless) email path · P0 · M (migration)
+#### EML-02 · Platform (tenantless) email path · P0 · M (migration) · **Done**
 - **Problem:** account emails (password reset, verification) have no tenant. The tenant outbox correctly refuses them.
 - **Behaviour:** a `SystemEmailMessage` entity (not `ITenantEntity`), sent by the same worker and sender with the same retry/lease rules. Only queued by account use cases, only to the account's own address. Not shown on any tenant's Emails page. Platform admins see a "System emails" list (P2).
 - **Areas:** Domain, Infrastructure (config, processor generalised over both tables), migration.
@@ -406,13 +406,13 @@ No **critical** tenant-isolation defect was found.
 - **Acceptance:** a queued system email is delivered and retried like tenant emails. Tenant query filters are unchanged.
 - **Tests:** outbox processor tests for system messages. Isolation test that tenant email endpoints never list system emails.
 
-#### AUTH-01 · Password reset end to end · P0 · M
+#### AUTH-01 · Password reset end to end · P0 · M · **Done**
 - **Behaviour:** register an `IEmailSender<ApplicationUser>` that queues a system email (EML-02) with a link built by EML-01. SPA pages: "Forgot password?" on login, `/reset-password?email=&code=`. Always answer "if an account exists, we sent an email" (no enumeration). Reset invalidates sessions (security stamp). Audited (`auth.password_reset_requested`, `auth.password_reset`). Rate-limited (SEC-02). Blocked while impersonating (existing filter).
 - **Depends on:** EML-01, EML-02, SEC-02.
 - **Acceptance:** a user resets their password without admin help. Old sessions stop working. The same response is given for unknown emails. Tokens expire (Identity default: 1 day; consider 2 h).
 - **Tests:** API flow test (request → read queued email → reset → old cookie rejected → login works). Unknown-email test. Component tests for both pages.
 
-#### AUTH-02 · My account page · P1 · S
+#### AUTH-02 · My account page · P1 · S · **Done**
 - Change display name and password (Identity `/manage/info` or a thin endpoint), show sign-in email, sign out of all sessions (security stamp). Blocked while impersonating. Audited.
 
 #### AUTH-03 · Email verification · P1 · M · *decision D5*
@@ -574,7 +574,7 @@ Each slice is a vertical, independently releasable change: domain → applicatio
 |---|---|---|---|---|
 | **1** ✅ | **Safe public entry points** (done) | SEC-01, EML-01, SEC-02, OPS-01 | ~3–4 d | Demo off in Production; absolute invitation links; 429s on abuse; CI on `main`; all tests green |
 | 2 ✅ | Production hosting baseline (done) | OPS-02, OPS-03, SEC-03, OBS-03, OPS-07 | ~3–4 d | Works behind a proxy with Secure cookies; sessions survive redeploy and scale-out; headers present; live/ready health; jobs locked |
-| 3 | Account recovery | EML-02, AUTH-01, AUTH-02 | ~4–5 d | Forgot/reset works end to end via email; users can change their own password |
+| 3 ✅ | Account recovery (done) | EML-02, AUTH-01, AUTH-02 | ~4–5 d | Forgot/reset works end to end via email; users can change their own password |
 | 4 | Entitlements and plan visibility | SUB-01…SUB-06, BILL-01 | ~1.5–2 wk | Server enforces the decided plans; read-only is consistent; tenants see usage and banners; history recorded; manual billing documented |
 | 5 | Onboarding and trust | ONB-01, ONB-02, LEG-01, AUTH-03, L10N-00 | ~1–1.5 wk | New user goes from sign-up to first issued invoice alone; terms accepted and recorded; email verified before third-party email |
 | 6 | Send invoices | INV-01, EML-03 | ~3–4 d | Customer receives the invoice PDF by email; digest at most daily |
