@@ -28,7 +28,8 @@ public sealed class UserManagementTests(ApiFactory factory) : IClassFixture<ApiF
         preview.AccountExists.ShouldBeFalse();
         accept.StatusCode.ShouldBe(HttpStatusCode.OK);
         reuse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        factory.Notifications.ShouldContain(n => n.To == email && n.Body.Contains(invitation.Token));
+        factory.Notifications.ShouldContain(n =>
+            n.To == email && n.Body.Contains($"{ApiFactory.PublicBaseUrl}/accept-invite?token={invitation.Token}"));
 
         var employee = await factory.SignInWithBearerAsync(email);
         (await employee.GetInvoicesAsync("/api/invoices")).ShouldHaveSingleItem().Id.ShouldBe(invoice.Id);

@@ -65,6 +65,7 @@ public static class DependencyInjection
             .AddDbContextCheck<ApplicationDbContext>();
 
         services.AddSingleton(TimeProvider.System);
+        services.AddAppUrls(configuration);
         services.AddTransient<ICsvFileBuilder, CsvFileBuilder>();
         services.AddFileStorage(configuration);
         services.AddEmail(configuration);

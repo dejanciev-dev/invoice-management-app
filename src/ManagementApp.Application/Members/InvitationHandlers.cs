@@ -27,6 +27,7 @@ public sealed class InviteMemberHandler(
     IIdentityService identity,
     SubscriptionGuard subscriptionGuard,
     INotificationSender notificationSender,
+    IAppUrls appUrls,
     IAuditLogger auditLogger,
     IValidator<InviteMemberCommand> validator,
     TimeProvider timeProvider)
@@ -76,7 +77,7 @@ public sealed class InviteMemberHandler(
             tenantId,
             email,
             $"You're invited to join {tenantName}",
-            $"Accept the invitation within {TenantInvitation.Lifetime.TotalDays:0} days: /accept-invite?token={token}"), cancellationToken);
+            $"Accept the invitation within {TenantInvitation.Lifetime.TotalDays:0} days: {appUrls.AcceptInvitation(token)}"), cancellationToken);
 
         return new CreatedInvitationDto(invitation.ToDto(), token);
     }
