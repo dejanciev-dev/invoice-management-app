@@ -117,6 +117,7 @@ public sealed class CreateTenantHandler(
     IApplicationDbContext context,
     IIdentityService identity,
     IAuditLogger auditLogger,
+    ICurrentUserService currentUser,
     IValidator<CreateTenantCommand> validator,
     TimeProvider timeProvider)
 {
@@ -139,6 +140,8 @@ public sealed class CreateTenantHandler(
         await context.ExecuteInTransactionAsync(async () =>
         {
             context.Tenants.Add(tenant);
+            context.SubscriptionEvents.Add(SubscriptionEvent.Record(
+                tenant.Id, before: null, tenant.Subscription, SubscriptionEventSource.Manual, now, currentUser.UserId, "Company created"));
 
             var adminEmail = command.AdminEmail.Trim();
             var existing = await identity.FindByEmailAsync(adminEmail, cancellationToken);
@@ -218,6 +221,7 @@ public sealed class ChangeTenantStatusHandler(
 public sealed class UpdateSubscriptionHandler(
     IApplicationDbContext context,
     IAuditLogger auditLogger,
+    ICurrentUserService currentUser,
     IValidator<UpdateSubscriptionCommand> validator,
     TimeProvider timeProvider)
 {
@@ -228,6 +232,7 @@ public sealed class UpdateSubscriptionHandler(
         var tenant = await context.Tenants.SingleOrDefaultAsync(t => t.Id == tenantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Tenant), tenantId);
 
+        var now = timeProvider.GetUtcNow();
         var previous = new { tenant.Subscription.PlanCode, tenant.Subscription.Status };
         var subscription = tenant.Subscription;
         subscription.ApplyPlan(SubscriptionPlans.Find(command.PlanCode)!);
@@ -238,9 +243,11 @@ public sealed class UpdateSubscriptionHandler(
         subscription.TrialEndsAt = command.TrialEndsAt;
         subscription.CurrentPeriodEndsAt = command.CurrentPeriodEndsAt;
         subscription.GraceEndsAt = command.Status == SubscriptionStatus.PastDue
-            ? command.GraceEndsAt ?? timeProvider.GetUtcNow().Add(TenantSubscription.GracePeriod)
+            ? command.GraceEndsAt ?? now.Add(TenantSubscription.GracePeriod)
             : null;
 
+        context.SubscriptionEvents.Add(SubscriptionEvent.Record(
+            tenantId, (previous.PlanCode, previous.Status), subscription, SubscriptionEventSource.Manual, now, currentUser.UserId, command.Note));
         auditLogger.Add(new AuditEntry(AuditActions.TenantSubscriptionChanged)
         {
             TenantId = tenantId,
@@ -343,4 +350,32 @@ public sealed class GetPlatformDashboardHandler(
 public sealed class GetPlansHandler
 {
     public IReadOnlyList<PlanDto> Handle() => SubscriptionPlans.All.Select(p => p.ToDto()).ToList();
+}
+
+/// <summary>A tenant's subscription history, newest first.</summary>
+public sealed class GetSubscriptionEventsHandler(IApplicationDbContext context, IIdentityService identity)
+{
+    public async Task<IReadOnlyList<SubscriptionEventDto>> HandleAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var events = await context.SubscriptionEvents.AsNoTracking()
+            .Where(e => e.TenantId == tenantId)
+            .OrderByDescending(e => e.Id)
+            .ToListAsync(cancellationToken);
+        var actors = await identity.GetUsersAsync(events.Where(e => e.ActorUserId is not null).Select(e => e.ActorUserId!), cancellationToken);
+
+        return events.Select(e => new SubscriptionEventDto(
+            e.At,
+            e.Source,
+            e.ActorUserId is { } id && actors.TryGetValue(id, out var actor) ? actor.Email : null,
+            e.FromPlanCode,
+            e.FromStatus,
+            e.ToPlanCode,
+            e.ToStatus,
+            e.TrialEndsAt,
+            e.CurrentPeriodEndsAt,
+            e.GraceEndsAt,
+            e.MaxUsers,
+            e.MaxInvoicesPerMonth,
+            e.Note)).ToList();
+    }
 }

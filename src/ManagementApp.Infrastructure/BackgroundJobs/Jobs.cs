@@ -87,6 +87,9 @@ public sealed class SubscriptionExpiryJob(IServiceScopeFactory scopeFactory, Tim
             }
 
             changed++;
+            context.SubscriptionEvents.Add(SubscriptionEvent.Record(
+                tenant.Id, (previous.PlanCode, previous.Status), tenant.Subscription, SubscriptionEventSource.System, now,
+                note: previous.Status == SubscriptionStatus.Trialing ? "Trial ended" : "Period or grace period ended"));
             audit.Add(new AuditEntry(tenant.Subscription.Status == SubscriptionStatus.Expired
                 ? AuditActions.SubscriptionExpired
                 : AuditActions.TenantSubscriptionChanged)

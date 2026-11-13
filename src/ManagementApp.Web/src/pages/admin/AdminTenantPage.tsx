@@ -8,18 +8,19 @@ import {
   useDeleteTenant,
   usePlans,
   useTenantDetails,
+  useSubscriptionEvents,
   useTenantUsers,
   useUpdateSubscription,
   useUpdateTenantSettingsAsAdmin,
   type SubscriptionUpdate,
 } from '../../api/admin'
 import { ApiError } from '../../api/client'
-import type { BillingCycle, SubscriptionStatus, TenantDetails, TenantStatus } from '../../api/types'
+import type { BillingCycle, SubscriptionEventSource, SubscriptionStatus, TenantDetails, TenantStatus } from '../../api/types'
 import { AuditLogTable } from '../../components/AuditLogTable'
 import { inputClass } from '../../components/styles'
 import { TenantSettingsForm } from '../../components/TenantSettingsForm'
 import { Alert, Badge, Button, Card, EmptyRow, Field, Spinner, StatTile, tableClass, tdClass, theadClass, thClass } from '../../components/ui'
-import { formatMoney } from '../../lib/format'
+import { formatDate, formatMoney } from '../../lib/format'
 import { formatDateTime, roleLabels, subscriptionStatusLabels } from '../../lib/labels'
 import { NotFoundPage } from '../NotFoundPage'
 import { errorText } from '../../lib/errors'
@@ -130,6 +131,7 @@ function Overview({ tenant }: { tenant: TenantDetails }) {
 
       <StatusActions tenant={tenant} />
       <SubscriptionForm tenant={tenant} />
+      <SubscriptionHistory tenantId={tenant.id} />
       <DangerZone tenant={tenant} />
     </div>
   )
@@ -190,6 +192,8 @@ function SubscriptionForm({ tenant }: { tenant: TenantDetails }) {
     currentPeriodEndsAt: s.currentPeriodEndsAt,
     customMaxUsers: plan && plan.maxUsers !== s.maxUsers ? s.maxUsers : null,
     customMaxInvoicesPerMonth: plan && plan.maxInvoicesPerMonth !== s.maxInvoicesPerMonth ? s.maxInvoicesPerMonth : null,
+    graceEndsAt: s.graceEndsAt,
+    note: '',
   })
   const date = (value: string | null) => (value ? value.slice(0, 10) : '')
   const toIso = (value: string) => (value ? new Date(`${value}T00:00:00Z`).toISOString() : null)
@@ -246,12 +250,66 @@ function SubscriptionForm({ tenant }: { tenant: TenantDetails }) {
         <Field label="Custom invoices / month" htmlFor="sub-invoices" hint="Empty = plan limit">
           <input id="sub-invoices" type="number" min={1} value={form.customMaxInvoicesPerMonth ?? ''} onChange={(e) => setForm({ ...form, customMaxInvoicesPerMonth: num(e.target.value) })} className={inputClass} />
         </Field>
+        {form.status === 'PastDue' && (
+          <Field label="Grace ends" htmlFor="sub-grace" hint="Empty = 14 days from now; read-only after">
+            <input id="sub-grace" type="date" value={date(form.graceEndsAt ?? null)} onChange={(e) => setForm({ ...form, graceEndsAt: toIso(e.target.value) })} className={inputClass} />
+          </Field>
+        )}
+        <Field label="Note for the history" htmlFor="sub-note" hint="e.g. invoice paid by bank transfer" className="sm:col-span-2">
+          <input id="sub-note" maxLength={500} value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} className={inputClass} />
+        </Field>
         <div className="flex items-end">
           <Button type="submit" loading={update.isPending}>
             Save subscription
           </Button>
         </div>
       </form>
+    </Card>
+  )
+}
+
+const sourceLabels: Record<SubscriptionEventSource, string> = { Manual: 'Admin', System: 'Automatic', Provider: 'Payment provider' }
+
+function SubscriptionHistory({ tenantId }: { tenantId: string }) {
+  const events = useSubscriptionEvents(tenantId)
+  const day = (value: string | null) => formatDate(value?.slice(0, 10))
+
+  return (
+    <Card className="overflow-hidden">
+      <h2 className="border-b border-line px-4 py-3 text-sm font-semibold">Subscription history</h2>
+      <div className="overflow-x-auto">
+        <table className={tableClass}>
+          <thead className={theadClass}>
+            <tr>
+              <th className={thClass}>When</th>
+              <th className={thClass}>By</th>
+              <th className={thClass}>Change</th>
+              <th className={thClass}>Dates</th>
+              <th className={thClass}>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.isPending && <EmptyRow colSpan={5}>Loading…</EmptyRow>}
+            {events.data?.length === 0 && <EmptyRow colSpan={5}>No changes recorded yet.</EmptyRow>}
+            {events.data?.map((e, i) => (
+              <tr key={`${e.at}-${i}`}>
+                <td className={tdClass}>{formatDateTime(e.at)}</td>
+                <td className={tdClass}>{e.actorEmail ?? sourceLabels[e.source]}</td>
+                <td className={tdClass}>
+                  {e.fromPlanCode && e.fromStatus ? `${e.fromPlanCode} (${subscriptionStatusLabels[e.fromStatus]}) → ` : ''}
+                  {e.toPlanCode} ({subscriptionStatusLabels[e.toStatus]})
+                </td>
+                <td className={`${tdClass} text-xs text-muted`}>
+                  {e.trialEndsAt && <div>Trial ends {day(e.trialEndsAt)}</div>}
+                  {e.currentPeriodEndsAt && <div>Paid until {day(e.currentPeriodEndsAt)}</div>}
+                  {e.graceEndsAt && <div>Grace ends {day(e.graceEndsAt)}</div>}
+                </td>
+                <td className={tdClass}>{e.note ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   )
 }

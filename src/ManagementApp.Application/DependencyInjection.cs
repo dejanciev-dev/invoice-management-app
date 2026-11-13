@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<CreateTenantHandler>();
         services.AddScoped<ChangeTenantStatusHandler>();
         services.AddScoped<UpdateSubscriptionHandler>();
+        services.AddScoped<GetSubscriptionEventsHandler>();
         services.AddScoped<DeleteTenantHandler>();
         services.AddScoped<GetPlansHandler>();
         services.AddScoped<GetPlatformUsersHandler>();

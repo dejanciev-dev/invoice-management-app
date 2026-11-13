@@ -70,7 +70,9 @@ public sealed record UpdateSubscriptionCommand(
     int? CustomMaxUsers,
     int? CustomMaxInvoicesPerMonth,
     // For PastDue: when the tenant becomes read-only; leave null for the standard grace period from now.
-    DateTimeOffset? GraceEndsAt = null);
+    DateTimeOffset? GraceEndsAt = null,
+    // Why it changed, e.g. "Invoice 2026-014 paid by bank transfer"; kept in the subscription history.
+    string? Note = null);
 
 public sealed record PlatformUserDto(
     string Id,
@@ -87,3 +89,19 @@ public sealed record PlatformUserTenantDto(Guid TenantId, string TenantName, Ten
 public sealed record SetUserStatusCommand(bool IsActive);
 
 public sealed record StartImpersonationCommand(string UserId, Guid TenantId, string? Reason);
+
+/// <summary>One entry of a tenant's subscription history; <see cref="ActorEmail"/> names the admin of a manual change.</summary>
+public sealed record SubscriptionEventDto(
+    DateTimeOffset At,
+    SubscriptionEventSource Source,
+    string? ActorEmail,
+    string? FromPlanCode,
+    SubscriptionStatus? FromStatus,
+    string ToPlanCode,
+    SubscriptionStatus ToStatus,
+    DateTimeOffset? TrialEndsAt,
+    DateTimeOffset? CurrentPeriodEndsAt,
+    DateTimeOffset? GraceEndsAt,
+    int? MaxUsers,
+    int? MaxInvoicesPerMonth,
+    string? Note);
