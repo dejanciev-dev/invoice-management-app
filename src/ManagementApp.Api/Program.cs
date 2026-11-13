@@ -58,6 +58,7 @@ app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 
+app.MapPublicConfigEndpoints();
 app.MapAuthEndpoints();
 app.MapTenantEndpoints();
 app.MapInvoiceEndpoints();

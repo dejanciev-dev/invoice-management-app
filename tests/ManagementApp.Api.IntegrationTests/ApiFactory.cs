@@ -44,14 +44,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Every notification the app sent, in order.</summary>
     public ConcurrentQueue<TenantNotification> Notifications { get; } = new();
 
+    /// <summary>The host environment the app runs in.</summary>
+    public string Environment { get; init; } = "Testing";
+
+    /// <summary>Extra configuration, applied over the defaults below; set it before the first request.</summary>
+    public Dictionary<string, string?> Settings { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         _connection.Open();
 
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(Environment);
         builder.UseSetting("BackgroundJobs:Enabled", "false");
         builder.UseSetting("FileStorage:Provider", "Local");
         builder.UseSetting("FileStorage:LocalRootPath", FileStorageRoot);
+        foreach (var (key, value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
+
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();

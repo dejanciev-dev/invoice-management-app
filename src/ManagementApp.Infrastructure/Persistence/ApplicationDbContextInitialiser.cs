@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ManagementApp.Infrastructure.Persistence;
@@ -28,6 +29,7 @@ public class ApplicationDbContextInitialiser(
     ApplicationDbContext context,
     UserManager<ApplicationUser> userManager,
     IConfiguration configuration,
+    IHostEnvironment environment,
     TimeProvider timeProvider)
 {
     public const string DemoUserEmail = "demo@example.com";
@@ -63,6 +65,16 @@ public class ApplicationDbContextInitialiser(
         if (!configuration.GetValue<bool>("Database:SeedDemoData"))
         {
             return;
+        }
+
+        // The demo accounts have published passwords, one of them a platform admin: never create them on a real
+        // server by accident. A public demo site opts in explicitly.
+        if (environment.IsProduction() && !configuration.GetValue<bool>("Demo:AllowInProduction"))
+        {
+            throw new InvalidOperationException(
+                "Database:SeedDemoData is enabled in Production. The demo accounts have public passwords, so they are "
+                + "not created in Production. Turn Database:SeedDemoData off, or set Demo:AllowInProduction to true "
+                + "for a public demo site.");
         }
 
         var now = timeProvider.GetUtcNow();

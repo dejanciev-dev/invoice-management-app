@@ -247,6 +247,11 @@ export interface ActiveTenant {
   subscription: Subscription
 }
 
+/** Settings for the pages shown before sign-in. */
+export interface PublicConfig {
+  demoLogin: boolean
+}
+
 export interface Session {
   userId: string
   email: string
