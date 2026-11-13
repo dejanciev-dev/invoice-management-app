@@ -71,9 +71,8 @@ public static class DependencyInjection
             });
 
         services.AddHealthChecks()
-            .AddDbContextCheck<ApplicationDbContext>("database", tags: [HealthCheckTags.Ready])
-            .AddCheck<FileStorageHealthCheck>("file-storage", tags: [HealthCheckTags.Ready])
-            .AddCheck<EmailOutboxHealthCheck>("email-outbox", tags: [HealthCheckTags.Ready]);
+            .AddCheck<DatabaseHealthCheck>("database", tags: [HealthCheckTags.Ready])
+            .AddCheck<FileStorageHealthCheck>("file-storage", tags: [HealthCheckTags.Ready]);
 
         services.AddSingleton(TimeProvider.System);
         services.AddAppUrls(configuration);
