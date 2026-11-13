@@ -39,6 +39,9 @@ public interface IApplicationDbContext
 
     DbSet<AuditLog> AuditLogs { get; }
 
+    /// <summary>Append-only subscription history, across tenants; platform admins read it.</summary>
+    DbSet<SubscriptionEvent> SubscriptionEvents { get; }
+
     DbSet<ImpersonationSession> ImpersonationSessions { get; }
 
     /// <summary>The outbox; see <see cref="Emails.EmailOutbox"/>.</summary>

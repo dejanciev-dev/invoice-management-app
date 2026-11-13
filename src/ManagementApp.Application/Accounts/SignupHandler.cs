@@ -45,6 +45,8 @@ public sealed class SignupHandler(
             var userId = await identity.CreateUserAsync(command.Email.Trim(), command.DisplayName, command.Password, cancellationToken);
 
             context.Tenants.Add(tenant);
+            context.SubscriptionEvents.Add(SubscriptionEvent.Record(
+                tenant.Id, before: null, tenant.Subscription, SubscriptionEventSource.System, now, userId, "Signed up"));
             context.TenantMemberships.Add(TenantMembership.Create(tenant.Id, userId, TenantRole.TenantAdmin));
             auditLogger.Add(new AuditEntry(AuditActions.SignedUp)
             {

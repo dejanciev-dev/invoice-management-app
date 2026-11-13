@@ -469,3 +469,22 @@ export interface ProblemDetails {
   detail?: string
   errors?: Record<string, string[]>
 }
+
+export type SubscriptionEventSource = 'Manual' | 'System' | 'Provider'
+
+/** One entry of a tenant's subscription history. */
+export interface SubscriptionEvent {
+  at: string
+  source: SubscriptionEventSource
+  actorEmail: string | null
+  fromPlanCode: string | null
+  fromStatus: SubscriptionStatus | null
+  toPlanCode: string
+  toStatus: SubscriptionStatus
+  trialEndsAt: string | null
+  currentPeriodEndsAt: string | null
+  graceEndsAt: string | null
+  maxUsers: number | null
+  maxInvoicesPerMonth: number | null
+  note: string | null
+}

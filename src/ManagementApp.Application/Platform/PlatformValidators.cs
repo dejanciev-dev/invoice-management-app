@@ -34,6 +34,7 @@ public sealed class UpdateSubscriptionCommandValidator : AbstractValidator<Updat
         RuleFor(v => v.BillingCycle).IsInEnum();
         RuleFor(v => v.CustomMaxUsers).GreaterThan(0);
         RuleFor(v => v.CustomMaxInvoicesPerMonth).GreaterThan(0);
+        RuleFor(v => v.Note).MaximumLength(SubscriptionEvent.NoteMaxLength);
     }
 }
 

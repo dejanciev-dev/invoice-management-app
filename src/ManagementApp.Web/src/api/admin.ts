@@ -9,6 +9,7 @@ import type {
   Plan,
   PlatformDashboard,
   PlatformUser,
+  SubscriptionEvent,
   SubscriptionStatus,
   TenantDetails,
   TenantListItem,
@@ -24,6 +25,7 @@ export const adminKeys = {
   tenants: (filters: object) => ['admin', 'tenants', filters] as const,
   tenant: (id: string) => ['admin', 'tenant', id] as const,
   tenantUsers: (id: string) => ['admin', 'tenant', id, 'users'] as const,
+  subscriptionEvents: (id: string) => ['admin', 'tenant', id, 'subscription-events'] as const,
   users: (filters: object) => ['admin', 'users', filters] as const,
   audit: (filters: object) => ['admin', 'audit', filters] as const,
 }
@@ -100,6 +102,10 @@ export interface SubscriptionUpdate {
   currentPeriodEndsAt: string | null
   customMaxUsers: number | null
   customMaxInvoicesPerMonth: number | null
+  /** For PastDue: when the company becomes read-only; null for the standard 14 days from now. */
+  graceEndsAt?: string | null
+  /** Why it changed; kept in the subscription history. */
+  note?: string | null
 }
 
 export const useUpdateSubscription = (id: string) =>
@@ -130,3 +136,9 @@ export function useImpersonate() {
     },
   })
 }
+
+export const useSubscriptionEvents = (id: string) =>
+  useQuery({
+    queryKey: adminKeys.subscriptionEvents(id),
+    queryFn: () => apiRequest<SubscriptionEvent[]>(`/admin/tenants/${id}/subscription-events`),
+  })

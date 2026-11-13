@@ -37,6 +37,8 @@ public static class AdminEndpoints
         admin.MapDelete("/tenants/{id:guid}", DeleteTenant).WithSummary("Permanently delete a switched-off tenant");
         admin.MapGet("/tenants/{id:guid}/users", GetTenantUsers).WithSummary("A tenant's users");
         admin.MapGet("/tenants/{id:guid}/audit-logs", GetTenantAuditLogs).WithSummary("A tenant's audit log");
+        admin.MapGet("/tenants/{id:guid}/subscription-events", GetSubscriptionEvents)
+            .WithSummary("A tenant's subscription history, newest first");
         admin.MapGet("/tenants/{id:guid}/logo", GetTenantLogo).WithSummary("A tenant's logo");
 
         admin.MapGet("/users", GetUsers).WithSummary("Search all user accounts");
@@ -100,6 +102,10 @@ public static class AdminEndpoints
     private static async Task<Ok<PagedResult<AuditLogDto>>> GetTenantAuditLogs(
         Guid id, [AsParameters] AuditLogFilter filter, GetAuditLogsHandler handler, CancellationToken cancellationToken) =>
         TypedResults.Ok(await handler.HandleForPlatformAsync(filter.ToQuery(id), cancellationToken));
+
+    private static async Task<Ok<IReadOnlyList<SubscriptionEventDto>>> GetSubscriptionEvents(
+        Guid id, GetSubscriptionEventsHandler handler, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await handler.HandleAsync(id, cancellationToken));
 
     private static async Task<Results<FileContentHttpResult, NotFound>> GetTenantLogo(
         Guid id, TenantLogoHandler handler, HttpContext httpContext, CancellationToken cancellationToken)

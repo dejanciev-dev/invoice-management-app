@@ -51,6 +51,8 @@ public class ApplicationDbContext(
 
     public DbSet<SystemEmailMessage> SystemEmailMessages => Set<SystemEmailMessage>();
 
+    public DbSet<SubscriptionEvent> SubscriptionEvents => Set<SubscriptionEvent>();
+
     public DbSet<JobLease> JobLeases => Set<JobLease>();
 
     /// <summary>The keys that protect session cookies and tokens, shared by every instance of the app.</summary>
