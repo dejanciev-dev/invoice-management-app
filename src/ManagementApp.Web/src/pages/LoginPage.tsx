@@ -29,7 +29,9 @@ export function LoginPage() {
   const error =
     login.error instanceof ApiError && login.error.status === 401
       ? 'Incorrect email or password.'
-      : login.error && 'Something went wrong. Please try again.'
+      : login.error instanceof ApiError && login.error.status === 429
+        ? 'Too many sign-in attempts. Please wait a minute and try again.'
+        : login.error && 'Something went wrong. Please try again.'
 
   return (
     <AuthShell
