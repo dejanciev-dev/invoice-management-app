@@ -47,6 +47,9 @@ public static class DependencyInjection
             })
             .AddEntityFrameworkStores<ApplicationDbContext>();
         services.AddScoped<IUserConfirmation<ApplicationUser>, ActiveUserConfirmation>();
+        // Password reset links work for a short while only.
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = Application.Accounts.RequestPasswordResetHandler.LinkLifetime);
         services.AddScoped<IIdentityService, IdentityService>();
 
         // The cookie is re-issued from the database periodically; keep the impersonation claims when that happens,

@@ -68,6 +68,21 @@ export function useSignup() {
   })
 }
 
+/** Emails a reset link if the account exists; the server answers the same either way. */
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (request: { email: string }) =>
+      apiRequest<void>('/auth/password/forgot', { method: 'POST', ...json(request) }),
+  })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (request: { email: string; code: string; newPassword: string }) =>
+      apiRequest<void>('/auth/password/reset', { method: 'POST', ...json(request) }),
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
 

@@ -20,10 +20,11 @@ public static class AuthEndpoints
 
         // login, refresh, manage/info, ... provided by ASP.NET Core Identity, with three additions:
         // sign-ins are audited, accounts are created through /signup (which also creates the company), and an
-        // impersonating admin cannot change the impersonated user's account settings.
+        // impersonating admin cannot change the impersonated user's account settings. Identity's registration,
+        // password reset and account changes are replaced by the endpoints below and /api/account.
         group.MapIdentityApi<ApplicationUser>()
-            .AddEndpointFilter(BlockIdentityRegistration)
             .AddEndpointFilter(BlockAccountChangesWhileImpersonating)
+            .AddEndpointFilter(BlockReplacedIdentityEndpoints)
             .AddEndpointFilter(AuditLogin)
             .Add(endpoint => endpoint.Metadata.Add(new EnableRateLimitingAttribute(
                 SendsEmail(endpoint) ? RateLimitPolicies.AccountCreation : RateLimitPolicies.SignIn)));
@@ -31,6 +32,14 @@ public static class AuthEndpoints
         group.MapPost("/signup", Signup)
             .RequireRateLimiting(RateLimitPolicies.AccountCreation)
             .WithSummary("Create an account and a new company, with the account as its admin");
+
+        var password = group.MapGroup("/password").AddEndpointFilter(BlockAccountChangesWhileImpersonating);
+        password.MapPost("/forgot", RequestPasswordReset)
+            .RequireRateLimiting(RateLimitPolicies.AccountCreation)
+            .WithSummary("Email a password reset link, if an account exists for the address (the answer is the same either way)");
+        password.MapPost("/reset", ResetPassword)
+            .RequireRateLimiting(RateLimitPolicies.SignIn)
+            .WithSummary("Choose a new password with the code from a reset email; signs the account out everywhere");
 
         group.MapPost("/logout", Logout)
             .RequireAuthorization()
@@ -47,6 +56,20 @@ public static class AuthEndpoints
     }
 
     private static async Task<NoContent> Signup(SignupCommand command, SignupHandler handler, CancellationToken cancellationToken)
+    {
+        await handler.HandleAsync(command, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> RequestPasswordReset(
+        RequestPasswordResetCommand command, RequestPasswordResetHandler handler, CancellationToken cancellationToken)
+    {
+        await handler.HandleAsync(command, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> ResetPassword(
+        ResetPasswordCommand command, ResetPasswordHandler handler, CancellationToken cancellationToken)
     {
         await handler.HandleAsync(command, cancellationToken);
         return TypedResults.NoContent();
@@ -70,14 +93,24 @@ public static class AuthEndpoints
 
     public sealed record AcceptedInvitation(Guid TenantId);
 
-    private static async ValueTask<object?> BlockIdentityRegistration(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    private static async ValueTask<object?> BlockReplacedIdentityEndpoints(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        if (IsEndpoint(context, "/register"))
+        var replacement = context.HttpContext.Request.Method switch
+        {
+            _ when IsEndpoint(context, "/register") => "Create an account with POST /api/auth/signup.",
+            // Identity's own reset only works for confirmed email addresses, and sends nothing without an email sender.
+            _ when IsEndpoint(context, "/forgotPassword") => "Ask for a reset link with POST /api/auth/password/forgot.",
+            _ when IsEndpoint(context, "/resetPassword") => "Reset the password with POST /api/auth/password/reset.",
+            "POST" when IsEndpoint(context, "/manage/info") => "Change your name or password through /api/account.",
+            _ => null
+        };
+
+        if (replacement is not null)
         {
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status404NotFound,
-                title: "Registration has moved.",
-                detail: "Create an account with POST /api/auth/signup.");
+                title: "This endpoint has moved.",
+                detail: replacement);
         }
 
         return await next(context);

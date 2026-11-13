@@ -36,14 +36,17 @@ public sealed class TenantAccessResolver(ApplicationDbContext context, TimeProvi
         string? impersonatorId,
         Guid? requestedTenantId,
         bool resolveTenant,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? securityStamp = null)
     {
         var user = await context.Users.AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => new { u.IsActive, u.IsPlatformAdmin })
+            .Select(u => new { u.IsActive, u.IsPlatformAdmin, u.SecurityStamp })
             .SingleOrDefaultAsync(cancellationToken);
 
-        if (user is null)
+        // A session issued before the account's security stamp changed (new password, "sign out everywhere") has
+        // ended, at once rather than at the cookie's next periodic check.
+        if (user is null || (securityStamp is not null && securityStamp != user.SecurityStamp))
         {
             return null;
         }

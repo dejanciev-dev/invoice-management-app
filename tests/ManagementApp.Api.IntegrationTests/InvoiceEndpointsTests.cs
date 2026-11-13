@@ -177,8 +177,10 @@ public sealed class InvoiceEndpointsTests(ApiFactory factory) : IClassFixture<Ap
     {
         var response = await factory.CreateClient().GetAsync("/health", CancellationToken);
 
+        // Healthy, or Degraded when other tests in this host left emails unsent (the outbox worker is off in tests);
+        // OperationsTests checks each state on a host of its own.
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await response.Content.ReadAsStringAsync(CancellationToken)).ShouldBe("Healthy");
+        (await response.Content.ReadAsStringAsync(CancellationToken)).ShouldBeOneOf("Healthy", "Degraded");
     }
 
     [Fact]

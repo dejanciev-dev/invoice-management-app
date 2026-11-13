@@ -2,7 +2,9 @@ using FluentValidation;
 using FluentValidation.Results;
 using ManagementApp.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace ManagementApp.Infrastructure.Identity;
 
@@ -71,6 +73,52 @@ public sealed class IdentityService(UserManager<ApplicationUser> userManager, Ti
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         ThrowIfFailed(await userManager.ResetPasswordAsync(user, token, newPassword), "newPassword");
     }
+
+    public async Task<string> GeneratePasswordResetCodeAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await RequireAsync(userId);
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        return WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+    }
+
+    public async Task<bool> ResetPasswordWithCodeAsync(string userId, string code, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await RequireAsync(userId);
+        string token;
+        try
+        {
+            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        // Resetting changes the security stamp, which ends every session and token of the account.
+        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (result.Errors.Any(e => e.Code == userManager.ErrorDescriber.InvalidToken().Code))
+        {
+            return false;
+        }
+
+        ThrowIfFailed(result, "newPassword");
+        return true;
+    }
+
+    public async Task ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await RequireAsync(userId);
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (result.Errors.Any(e => e.Code == userManager.ErrorDescriber.PasswordMismatch().Code))
+        {
+            throw new ValidationException([new ValidationFailure("currentPassword", "The current password is incorrect.")]);
+        }
+
+        ThrowIfFailed(result, "newPassword");
+    }
+
+    public async Task SignOutEverywhereAsync(string userId, CancellationToken cancellationToken) =>
+        ThrowIfFailed(await userManager.UpdateSecurityStampAsync(await RequireAsync(userId)));
 
     public async Task SetActiveAsync(string userId, bool isActive, CancellationToken cancellationToken)
     {

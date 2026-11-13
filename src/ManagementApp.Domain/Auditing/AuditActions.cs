@@ -6,6 +6,11 @@ public static class AuditActions
     public const string LoginFailed = "auth.login_failed";
     public const string Logout = "auth.logout";
     public const string SignedUp = "auth.signup";
+    public const string PasswordResetRequested = "auth.password_reset_requested";
+    public const string PasswordReset = "auth.password_reset";
+    public const string PasswordChanged = "auth.password_changed";
+    public const string ProfileUpdated = "auth.profile_updated";
+    public const string SignedOutEverywhere = "auth.signed_out_everywhere";
 
     public const string TenantCreated = "tenant.created";
     public const string TenantUpdated = "tenant.updated";
