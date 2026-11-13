@@ -31,6 +31,10 @@ const session: Session = {
       maxUsers: 5,
       maxInvoicesPerMonth: 100,
       features: [],
+      canChangeData: true,
+      readOnlyReason: null,
+      graceEndsAt: null,
+      accessEndsAt: null,
     },
   },
 }

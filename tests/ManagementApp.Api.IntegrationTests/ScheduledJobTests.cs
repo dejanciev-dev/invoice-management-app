@@ -1,4 +1,7 @@
+using ManagementApp.Domain.Tenancy;
 using ManagementApp.Infrastructure.BackgroundJobs;
+using ManagementApp.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static ManagementApp.Api.IntegrationTests.TestData;
 
@@ -43,6 +46,25 @@ public sealed class ScheduledJobTests
         takenAgain.ShouldBeFalse();
         otherJob.ShouldBeTrue();
         afterExpiry.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task TheSubscriptionJob_SavesAnEndedTrialAsFree()
+    {
+        await using var factory = new ApiFactory();
+        var company = await factory.CreateTenantAsync();
+
+        factory.Clock.Advance(TimeSpan.FromDays(SubscriptionPlans.TrialDays + 1));
+        var changed = await factory.Services.GetRequiredService<SubscriptionExpiryJob>().RunAsync(Ct);
+        var again = await factory.Services.GetRequiredService<SubscriptionExpiryJob>().RunAsync(Ct);
+
+        changed.ShouldBe(1);
+        again.ShouldBe(0);
+        var subscription = await factory.WithServicesAsync(services => services.GetRequiredService<ApplicationDbContext>().Tenants.AsNoTracking()
+            .Where(t => t.Id == company.TenantId).Select(t => t.Subscription).SingleAsync(Ct));
+        subscription.Status.ShouldBe(SubscriptionStatus.Active);
+        subscription.PlanCode.ShouldBe(SubscriptionPlans.Free.Code);
+        subscription.MaxUsers.ShouldBe(SubscriptionPlans.Free.MaxUsers);
     }
 
     private static BackgroundJobScheduler SchedulerOf(ApiFactory factory) =>

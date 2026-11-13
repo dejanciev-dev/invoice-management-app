@@ -87,17 +87,25 @@ public static class TenantMappings
         tenant.NotificationSettings.WeeklySummaryEnabled = settings.Notifications.WeeklySummaryEnabled;
     }
 
-    public static SubscriptionDto ToDto(this TenantSubscription subscription, DateTimeOffset now) => new(
-        subscription.PlanCode,
-        SubscriptionPlans.Find(subscription.PlanCode)?.Name ?? subscription.PlanCode,
-        subscription.Status,
-        subscription.EffectiveStatus(now),
-        subscription.BillingCycle,
-        subscription.TrialEndsAt,
-        subscription.CurrentPeriodEndsAt,
-        subscription.MaxUsers,
-        subscription.MaxInvoicesPerMonth,
-        Split(subscription.Features));
+    public static SubscriptionDto ToDto(this TenantSubscription subscription, DateTimeOffset now)
+    {
+        var entitlements = subscription.EntitlementsAt(now);
+        return new SubscriptionDto(
+            entitlements.PlanCode,
+            SubscriptionPlans.Find(entitlements.PlanCode)?.Name ?? entitlements.PlanCode,
+            subscription.Status,
+            entitlements.Status,
+            subscription.BillingCycle,
+            subscription.TrialEndsAt,
+            subscription.CurrentPeriodEndsAt,
+            entitlements.MaxUsers,
+            entitlements.MaxInvoicesPerMonth,
+            Split(entitlements.Features),
+            entitlements.CanChangeData,
+            entitlements.ReadOnlyReason,
+            entitlements.GraceEndsAt,
+            entitlements.AccessEndsAt);
+    }
 
     public static PlanDto ToDto(this SubscriptionPlan plan) => new(
         plan.Code, plan.Name, plan.MaxUsers, plan.MaxInvoicesPerMonth, Split(plan.Features), plan.MonthlyPrice, plan.YearlyPrice,

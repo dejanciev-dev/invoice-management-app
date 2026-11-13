@@ -51,7 +51,12 @@ public sealed class OverdueInvoiceReminderJob(TenantJobRunner runner, TimeProvid
         }, cancellationToken);
 }
 
-/// <summary>Marks trials and paid periods that have run out as expired. A platform-level job: it works across tenants.</summary>
+/// <summary>
+/// Saves the subscription transitions that are due: an ended trial moves to Free, an unpaid period becomes past due,
+/// and a past grace period or cancelled period expires. Access already follows the dates without it
+/// (<see cref="TenantSubscription.EntitlementsAt"/>); this keeps the stored status and history in step. A platform-level
+/// job: it works across tenants.
+/// </summary>
 public sealed class SubscriptionExpiryJob(IServiceScopeFactory scopeFactory, TimeProvider timeProvider)
 {
     public async Task<int> RunAsync(CancellationToken cancellationToken)
@@ -60,27 +65,41 @@ public sealed class SubscriptionExpiryJob(IServiceScopeFactory scopeFactory, Tim
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var audit = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
         var now = timeProvider.GetUtcNow();
+        var gracePeriodStart = now - TenantSubscription.GracePeriod;
 
-        var expired = await context.Tenants
+        var candidates = await context.Tenants
             .Where(t => (t.Subscription.Status == SubscriptionStatus.Trialing && t.Subscription.TrialEndsAt <= now)
-                        || (t.Subscription.Status == SubscriptionStatus.Active && t.Subscription.CurrentPeriodEndsAt <= now))
+                        || (t.Subscription.Status == SubscriptionStatus.Active && t.Subscription.CurrentPeriodEndsAt <= now)
+                        || (t.Subscription.Status == SubscriptionStatus.PastDue
+                            && (t.Subscription.GraceEndsAt <= now
+                                || (t.Subscription.GraceEndsAt == null && t.Subscription.CurrentPeriodEndsAt <= gracePeriodStart)))
+                        || (t.Subscription.Status == SubscriptionStatus.Cancelled
+                            && (t.Subscription.CurrentPeriodEndsAt == null || t.Subscription.CurrentPeriodEndsAt <= now)))
             .ToListAsync(cancellationToken);
 
-        foreach (var tenant in expired)
+        var changed = 0;
+        foreach (var tenant in candidates)
         {
-            var previous = tenant.Subscription.Status;
-            tenant.Subscription.Status = SubscriptionStatus.Expired;
-            audit.Add(new AuditEntry(AuditActions.SubscriptionExpired)
+            var previous = new { tenant.Subscription.PlanCode, tenant.Subscription.Status };
+            if (!tenant.Subscription.ApplyLifecycle(now))
+            {
+                continue;
+            }
+
+            changed++;
+            audit.Add(new AuditEntry(tenant.Subscription.Status == SubscriptionStatus.Expired
+                ? AuditActions.SubscriptionExpired
+                : AuditActions.TenantSubscriptionChanged)
             {
                 TenantId = tenant.Id,
                 EntityType = nameof(Tenant),
                 EntityId = tenant.Id.ToString(),
-                Details = new { From = previous, tenant.Subscription.PlanCode }
+                Details = new { From = previous, To = new { tenant.Subscription.PlanCode, tenant.Subscription.Status } }
             });
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        return expired.Count;
+        return changed;
     }
 }
 
