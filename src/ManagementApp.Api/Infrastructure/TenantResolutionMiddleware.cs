@@ -4,6 +4,7 @@ using ManagementApp.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ManagementApp.Api.Infrastructure;
 
@@ -37,7 +38,8 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
         TenantContext tenantContext,
         RequestAccess access,
         ICurrentUserService currentUser,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IOptions<IdentityOptions> identityOptions)
     {
         if (httpContext.User.Identity?.IsAuthenticated != true || currentUser.UserId is not { } userId)
         {
@@ -53,7 +55,8 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
             currentUser.ImpersonatorUserId,
             ReadRequestedTenant(httpContext.Request),
             resolveTenant,
-            httpContext.RequestAborted);
+            httpContext.RequestAborted,
+            httpContext.User.FindFirst(identityOptions.Value.ClaimsIdentity.SecurityStampClaimType)?.Value);
 
         if (user is null || !user.IsActive || !user.ImpersonationIsValid)
         {

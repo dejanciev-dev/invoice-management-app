@@ -3,11 +3,13 @@ import { PublicOnly, RequireAuth, RequirePlatformAdmin, RequireTenant } from './
 import { Layout } from './components/Layout'
 import { Spinner } from './components/ui'
 import { AcceptInvitePage } from './pages/AcceptInvitePage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { InvoiceDetailsPage } from './pages/InvoiceDetailsPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
 // The editor pulls in the form and validation libraries, so it is only loaded when needed.
 const lazyEditor = async () => ({ Component: (await import('./pages/InvoiceEditorPage')).InvoiceEditorPage })
@@ -21,10 +23,13 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
     ],
   },
   // Works signed in or out: an invitation can create an account or be accepted by an existing one.
   { path: '/accept-invite', element: <AcceptInvitePage /> },
+  // Works signed in or out, so a reset link opened in a browser with an old session still works.
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <RequireAuth />,
     children: [

@@ -70,6 +70,11 @@ export function LoginPage() {
             className={inputClass}
           />
         </Field>
+        <p className="-mt-2 text-right text-sm">
+          <Link to="/forgot-password" className="font-medium text-brand hover:text-brand-strong">
+            Forgot password?
+          </Link>
+        </p>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"

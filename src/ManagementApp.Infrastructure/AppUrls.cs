@@ -46,6 +46,9 @@ internal sealed class AppUrls(IOptions<AppOptions> options) : IAppUrls
     private readonly string _baseUrl = options.Value.PublicBaseUrl.TrimEnd('/');
 
     public string AcceptInvitation(string token) => $"{_baseUrl}/accept-invite?token={Uri.EscapeDataString(token)}";
+
+    public string ResetPassword(string email, string code) =>
+        $"{_baseUrl}/reset-password?email={Uri.EscapeDataString(email)}&code={Uri.EscapeDataString(code)}";
 }
 
 internal static class AppUrlsRegistration

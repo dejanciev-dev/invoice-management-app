@@ -31,6 +31,24 @@ public interface IIdentityService
     /// <summary>Sets a new password and signs the user out everywhere.</summary>
     Task ResetPasswordAsync(string userId, string newPassword, CancellationToken cancellationToken);
 
+    /// <summary>A single-use, time-limited code that lets the account's owner choose a new password; safe in a URL.</summary>
+    Task<string> GeneratePasswordResetCodeAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Sets a new password with a code from <see cref="GeneratePasswordResetCodeAsync"/> and signs the user out
+    /// everywhere. False when the code is wrong, used or expired; throws a validation exception for a weak password.
+    /// </summary>
+    Task<bool> ResetPasswordWithCodeAsync(string userId, string code, string newPassword, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Changes the password after checking the current one, and signs the user out everywhere else. Throws a
+    /// validation exception when the current password is wrong or the new one is too weak.
+    /// </summary>
+    Task ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
+
+    /// <summary>Ends every session and token of the account, on every device.</summary>
+    Task SignOutEverywhereAsync(string userId, CancellationToken cancellationToken);
+
     /// <summary>Enables or disables the account on the whole platform and signs the user out everywhere.</summary>
     Task SetActiveAsync(string userId, bool isActive, CancellationToken cancellationToken);
 }

@@ -52,11 +52,11 @@ public sealed class RateLimitingTests
         await using var factory = LimitedFactory(("AccountCreation", 1));
         var client = factory.CreateClient();
 
-        var first = await client.PostJsonAsync("/api/auth/forgotPassword", new { email = "nobody@example.com" });
-        var second = await client.PostJsonAsync("/api/auth/forgotPassword", new { email = "nobody@example.com" });
+        var first = await client.PostJsonAsync("/api/auth/password/forgot", new { email = "nobody@example.com" });
+        var second = await client.PostJsonAsync("/api/auth/password/forgot", new { email = "nobody@example.com" });
         var login = await client.PostJsonAsync("/api/auth/login", new { email = "nobody@example.com", password = "wrong" });
 
-        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        first.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         second.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         login.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
