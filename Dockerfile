@@ -24,7 +24,7 @@ COPY src/ManagementApp.Api/ src/ManagementApp.Api/
 RUN dotnet publish src/ManagementApp.Api/ManagementApp.Api.csproj -c Release -o /app --no-restore
 
 # 3. Runtime image: the API serves the web app from wwwroot
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 # Stored files (FileStorage:Provider Local) live here; mount a volume to keep them.
 # Data protection keys (auth cookies) are kept in the database, so sessions survive restarts without a volume.
